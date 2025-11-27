@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Community } from "../../schema";
-import { images } from "../../constants/images";
+import { getDistinctImagesForCommunities } from "../../utils/imageUtils";
 
 interface CommunityCardProps extends Community {
     imageUrl: string;
@@ -24,6 +24,10 @@ function CommunityCard({ id, title, description, imageUrl }: CommunityCardProps)
 }
 
 function CommunityGrid({ communities }: { communities: Community[] }) {
+  // Get distinct images for all communities in this batch
+  const communityIds = communities.map(c => c.id);
+  const imageMap = getDistinctImagesForCommunities(communityIds);
+
   return (
     <div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-[repeat(auto-fit,minmax(158px,175px))] gap-3 p-4">
@@ -31,7 +35,7 @@ function CommunityGrid({ communities }: { communities: Community[] }) {
                 <CommunityCard
                     key={community.id}
                     {...community}
-                    imageUrl={images[Math.floor(Math.random() * images.length)]}
+                    imageUrl={imageMap.get(community.id) || "/images/img1.jpg"}
                 />
             ))}
         </div>

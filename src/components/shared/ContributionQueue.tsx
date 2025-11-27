@@ -7,8 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu";
 import { ContributionCard } from "./ContributionCard";
 
 // Proposal Detail Modal Component
@@ -348,12 +356,14 @@ export function ContributionQueueModal({
   proposalsLoading: boolean;
   onVote: (proposalId: string, proposalType: 'node' | 'edge', voteValue: number) => Promise<void>;
 }) {
-  const [statusFilter, setStatusFilter] = useState<'all' | 'PENDING' | 'APPROVED' | 'REJECTED'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
   const [typeFilter, setTypeFilter] = useState<'all' | 'node' | 'edge'>('all');
+  const [proposalTypeFilter, setProposalTypeFilter] = useState<'all' | 'CREATE' | 'UPDATE' | 'DELETE'>('all');
+  const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'upvotes' | 'downvotes'>('recent');
   const [selectedProposal, setSelectedProposal] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  // Get all proposals sorted by date
+  // Get all proposals with filters and sorting
   const getFilteredProposals = () => {
     if (!proposalsData) return [];
     
@@ -362,7 +372,7 @@ export function ContributionQueueModal({
       ...(proposalsData.edgeProposals || []).map(p => ({ ...p, kind: 'edge' as const }))
     ];
 
-    // Apply type filter
+    // Apply type filter (node/edge)
     if (typeFilter !== 'all') {
       allProposals = allProposals.filter(p => p.kind === typeFilter);
     }
@@ -372,10 +382,28 @@ export function ContributionQueueModal({
       allProposals = allProposals.filter(p => p.status === statusFilter);
     }
 
-    // Sort by date (most recent first)
-    return allProposals.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    // Apply proposal type filter (CREATE/UPDATE/DELETE)
+    if (proposalTypeFilter !== 'all') {
+      allProposals = allProposals.filter(p => p.proposalType === proposalTypeFilter);
+    }
+
+    // Apply sorting
+    const sorted = [...allProposals].sort((a, b) => {
+      switch (sortBy) {
+        case 'recent':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'upvotes':
+          return b.upvotes - a.upvotes;
+        case 'downvotes':
+          return b.downvotes - a.downvotes;
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
   };
 
   const filteredProposals = getFilteredProposals();
@@ -396,99 +424,142 @@ export function ContributionQueueModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[95vw] max-w-[900px] max-h-[85vh] rounded-xl sm:rounded-2xl overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">
-              All Contributions
+        <DialogContent className="w-[95vw] max-w-[1000px] max-h-[90vh] rounded-xl sm:rounded-2xl overflow-hidden flex flex-col">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-2xl font-bold">
+              Contribution Queue
             </DialogTitle>
-            <DialogDescription>Browse and filter all node and edge contributions in this community.</DialogDescription>
+            <DialogDescription>
+              Review and vote on node and edge proposals for this community
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-4 overflow-hidden flex-1">
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 px-1">
-              <div className="flex-1">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                  Type Filter
-                </label>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant={typeFilter === 'all' ? 'default' : 'outline'}
-                    onClick={() => setTypeFilter('all')}
-                    className="flex-1"
-                  >
-                    All
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={typeFilter === 'node' ? 'default' : 'outline'}
-                    onClick={() => setTypeFilter('node')}
-                    className="flex-1"
-                  >
-                    Nodes
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={typeFilter === 'edge' ? 'default' : 'outline'}
-                    onClick={() => setTypeFilter('edge')}
-                    className="flex-1"
-                  >
-                    Edges
-                  </Button>
-                </div>
+          <div className="flex flex-col gap-3 overflow-hidden flex-1">
+            {/* Compact Filter Bar with Dropdowns */}
+            <div className="bg-muted/40 rounded-lg p-3 border border-border/50">
+              <div className="flex flex-wrap gap-2 items-center">
+                {/* Status Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-8 text-xs font-medium gap-2 px-2.5">
+                      {statusFilter === 'all' ? 'Status' : statusFilter}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-40">
+                    <DropdownMenuLabel className="text-xs">Filter by Status</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                      <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="PENDING">Pending</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="APPROVED">Approved</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="REJECTED">Rejected</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Type Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-8 text-xs font-medium gap-2 px-2.5">
+                      {typeFilter === 'all' ? 'Type' : typeFilter === 'node' ? 'Nodes' : 'Edges'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-40">
+                    <DropdownMenuLabel className="text-xs">Element Type</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+                      <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="node">Nodes</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="edge">Edges</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Proposal Type Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-8 text-xs font-medium gap-2 px-2.5">
+                      {proposalTypeFilter === 'all' ? 'Op' : proposalTypeFilter}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-40">
+                    <DropdownMenuLabel className="text-xs">Proposal Type</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={proposalTypeFilter} onValueChange={(v) => setProposalTypeFilter(v as any)}>
+                      <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="CREATE">Create</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="UPDATE">Update</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="DELETE">Delete</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Sort Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-8 text-xs font-medium gap-2 px-2.5">
+                      {sortBy === 'recent' ? 'Most Recent' : sortBy === 'oldest' ? 'Oldest' : sortBy === 'upvotes' ? 'Most Upvotes' : 'Most Downvotes'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-44">
+                    <DropdownMenuLabel className="text-xs">Sort By</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                      <DropdownMenuRadioItem value="recent">Most Recent</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="oldest">Oldest</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="upvotes">Most Upvotes</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="downvotes">Most Downvotes</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Results Counter */}
+                <span className="text-[11px] text-muted-foreground font-medium ml-auto">
+                  {filteredProposals.length} proposal{filteredProposals.length !== 1 ? 's' : ''}
+                </span>
               </div>
             </div>
 
-            {/* Status Tabs */}
-            <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)} className="flex-1 flex flex-col overflow-hidden">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="PENDING">Pending</TabsTrigger>
-                <TabsTrigger value="APPROVED">Approved</TabsTrigger>
-                <TabsTrigger value="REJECTED">Rejected</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value={statusFilter} className="flex-1 overflow-y-auto mt-4">
-                {proposalsLoading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-                  </div>
-                ) : filteredProposals.length > 0 ? (
-                  <div className="flex flex-col gap-3 pr-2">
-                    {filteredProposals.map((proposal, index) => (
-                      <div key={`${proposal.kind}-${proposal.id}-${index}`}>
-                        {renderProposal(proposal)}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <div className="w-16 h-16 mb-4 rounded-full bg-muted flex items-center justify-center">
-                      <svg
-                        className="w-8 h-8 text-muted-foreground"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
+            {/* Proposals List */}
+            <div className="flex-1 overflow-y-auto pr-2 pl-1">
+              {proposalsLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                </div>
+              ) : filteredProposals.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {filteredProposals.map((proposal, index) => (
+                    <div key={`${proposal.kind}-${proposal.id}-${index}`}>
+                      {renderProposal(proposal)}
                     </div>
-                    <p className="text-muted-foreground text-sm text-center">
-                      No contributions found
-                    </p>
-                    <p className="text-muted-foreground text-xs text-center mt-1">
-                      Try adjusting your filters
-                    </p>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="w-16 h-16 mb-4 rounded-full bg-muted flex items-center justify-center">
+                    <svg
+                      className="w-8 h-8 text-muted-foreground"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
                   </div>
-                )}
-              </TabsContent>
-            </Tabs>
+                  <p className="text-muted-foreground text-sm text-center font-medium">
+                    No contributions found
+                  </p>
+                  <p className="text-muted-foreground text-xs text-center mt-1">
+                    Try adjusting your filters
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

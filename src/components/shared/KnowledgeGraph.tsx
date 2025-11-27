@@ -58,7 +58,7 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
         width: LINK_WIDTH,
       })),
     }),
-    [NODE_COLOR, LINK_COLOR, LINK_WIDTH]
+    [NODE_COLOR, LINK_COLOR, LINK_WIDTH, dummyNodes, dummyEdges]
   );
 
   // Search functionality
@@ -160,9 +160,9 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
         fgRef.current.d3Force("charge")?.strength(isSmall ? -80 : -150);
         fgRef.current.zoomToFit(isSmall ? 300 : 400, isSmall ? -50 : -100);
       }
-    }, 600);
+    }, 800);
     return () => clearTimeout(timer);
-  }, [dimensions, LINK_DISTANCE, isSmall]);
+  }, [dimensions, LINK_DISTANCE, isSmall, graphData.nodes.length, graphData.links.length]);
 
   // Tooltip follows mouse
   useEffect(() => {

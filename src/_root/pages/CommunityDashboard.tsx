@@ -203,7 +203,7 @@ function CommunityDashboard() {
         nodes: (queryResult as any).data.nodes || [],
         edges: (queryResult as any).data.edges || [],
       });
-      toast.success("Search completed!");
+      // Search completed - no toast needed
     }
   }, [queryResult]);
 
@@ -247,14 +247,7 @@ function CommunityDashboard() {
         await voteEdgeMutation.mutateAsync({ proposalId, vote: voteValue, userId: user.id });
       }
       
-      // Show success toast based on response
-      if (voteValue === 1) {
-        toast.success("Upvoted!");
-      } else if (voteValue === -1) {
-        toast.success("Downvoted!");
-      } else {
-        toast.success("Vote cleared!");
-      }
+      // Vote success - handled through mutation query hooks
     
       // Refetch proposals after voting
       if (communityId) {
@@ -271,9 +264,8 @@ function CommunityDashboard() {
     try {
       await joinMutation.mutateAsync({ communityId, userId: user.id });
       // Cache invalidation happens automatically through mutation's onSuccess
-      toast.success("Successfully joined community!");
     } catch (error) {
-      toast.error("Failed to join community. Please try again.");
+      console.error("Error joining community:", error);
     }
   };
 
@@ -282,9 +274,8 @@ function CommunityDashboard() {
     try {
       await leaveMutation.mutateAsync({ communityId, userId: user.id });
       // Cache invalidation happens automatically through mutation's onSuccess
-      toast.success("Successfully left community!");
     } catch (error) {
-      toast.error("Failed to leave community. Please try again.");
+      console.error("Error leaving community:", error);
     }
   };
 
@@ -308,9 +299,8 @@ function CommunityDashboard() {
         title: ownerSettingsTitle.trim(),
         description: ownerSettingsDescription.trim(),
       });
-      toast.success("Community updated successfully!");
     } catch (error) {
-      toast.error("Error updating community!");
+      console.error("Error updating community:", error);
     }
   };
 
@@ -324,11 +314,10 @@ function CommunityDashboard() {
 
     try {
       await deleteCommunityMutation.mutateAsync(communityId);
-      toast.success("Community deleted successfully!");
       setIsOwnerSettingsModalOpen(false);
       navigate("/Communities");
     } catch (error) {
-      toast.error("Error deleting community!");
+      console.error("Error deleting community:", error);
     }
   };
 
@@ -429,7 +418,6 @@ function CommunityDashboard() {
         proposalType: "CREATE",
       });
 
-      toast.success("Node proposal created successfully!");
       setIsModalOpen(false);
       setNodeLabels([]);
       setNodeName("");
@@ -479,7 +467,6 @@ function CommunityDashboard() {
         proposalType: "CREATE",
       });
 
-      toast.success("Edge proposal created successfully!");
       setIsModalOpen(false);
       setEdgeData({});
       setEdgeProperties([{ key: "", value: "" }]);
@@ -501,7 +488,7 @@ function CommunityDashboard() {
           proposalType: "UPDATE",
           nodeId: data.id,
         });
-        toast.success("Node update proposal created!");
+        // Node update proposal created - handled by mutation
       } else {
         await createEdgeMutation.mutateAsync({
           communityId: communityId!,
@@ -513,7 +500,7 @@ function CommunityDashboard() {
           proposalType: "UPDATE",
           edgeId: data.id,
         });
-        toast.success("Edge update proposal created!");
+        // Edge update proposal created - handled by mutation
       }
     } catch (err) {
       toast.error("Error creating update proposal");
@@ -545,7 +532,7 @@ function CommunityDashboard() {
           proposalType: "DELETE",
           nodeId: nodeOrEdgeData.id,
         });
-        toast.success("Node delete proposal created!");
+        // Node delete proposal created - handled by mutation
       } else {
         await createEdgeMutation.mutateAsync({
           communityId: communityId!,
@@ -557,7 +544,7 @@ function CommunityDashboard() {
           proposalType: "DELETE",
           edgeId: nodeOrEdgeData.id,
         });
-        toast.success("Edge delete proposal created!");
+        // Edge delete proposal created - handled by mutation
       }
     } catch (err) {
       toast.error("Error creating delete proposal");

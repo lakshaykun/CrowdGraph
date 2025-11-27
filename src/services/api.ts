@@ -1,55 +1,116 @@
 import axios from "axios";
+import { toast } from "sonner";
 
 const BASE_URL = "https://crowdgraph.onrender.com";
+
+// Create axios instance with default config
+const apiClient = axios.create({
+  baseURL: BASE_URL,
+  timeout: 30000, // 30 second timeout
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor - log requests in development
+apiClient.interceptors.request.use(
+  (config) => {
+    if (import.meta.env.DEV) {
+      console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+    }
+    return config;
+  },
+  (error) => {
+    console.error('[API Request Error]', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor - handle common errors
+apiClient.interceptors.response.use(
+  (response) => {
+    if (import.meta.env.DEV) {
+      console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, response.data);
+    }
+    return response;
+  },
+  (error) => {
+    // Handle network errors
+    if (!error.response) {
+      console.error('[Network Error]', error.message);
+      if (error.code === 'ECONNABORTED') {
+        toast.error('Request timeout. Please check your connection.');
+      } else if (error.message === 'Network Error') {
+        toast.error('Network error. Please check your internet connection.');
+      }
+      return Promise.reject(error);
+    }
+
+    // Handle HTTP errors
+    const status = error.response.status;
+    const message = error.response.data?.error || error.response.data?.message || error.message;
+
+    if (import.meta.env.DEV) {
+      console.error(`[API Error ${status}]`, message);
+    }
+
+    // Don't show toast for 404s (might be expected)
+    if (status === 404 && !error.config.showNotFoundError) {
+      // Silently handle expected 404s
+    } else if (status === 401) {
+      toast.error('Unauthorized. Please log in again.');
+    } else if (status === 403) {
+      toast.error('Access forbidden.');
+    } else if (status === 429) {
+      toast.error('Too many requests. Please try again later.');
+    } else if (status >= 500) {
+      toast.error('Server error. Please try again later.');
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 ///////////////////////////// Community Management /////////////////////////////
 // get 10 featured communities
 export const getFeaturedCommunities = async () => {
-  const response = await axios.get(`${BASE_URL}/community/random`);
+  const response = await apiClient.get('/community/random');
   return response.data;
 };
 
 // search communities by title
 export const searchCommunities = async (title: string) => {
-  const response = await axios.get(
-    `${BASE_URL}/community/search?title=${title}`
-  );
+  const response = await apiClient.get(`/community/search?title=${title}`);
   return response.data;
 };
 
 // search community by id
 export const searchCommunityById = async (id: string) => {
-  const response = await axios.get(`${BASE_URL}/community/${id}`);
+  const response = await apiClient.get(`/community/${id}`);
   return response.data;
 };
 
 // get all users in community by community id
 export const getUsersInCommunity = async (communityId: string) => {
-  const response = await axios.get(
-    `${BASE_URL}/community/${communityId}/users`
-  );
+  const response = await apiClient.get(`/community/${communityId}/users`);
   return response.data;
 };
 
 // join a community
 export const joinCommunity = async (communityId: string, userId: string) => {
-  const response = await axios.post(
-    `${BASE_URL}/community/${communityId}/${userId}`
-  );
+  const response = await apiClient.post(`/community/${communityId}/${userId}`);
   return response.data;
 };
 
 // leave a community
 export const leaveCommunity = async (communityId: string, userId: string) => {
-  const response = await axios.delete(
-    `${BASE_URL}/community/${communityId}/${userId}`
-  );
+  const response = await apiClient.delete(`/community/${communityId}/${userId}`);
   return response.data;
 };
 
 // create a new community
 export const createCommunity = async (title: string, description: string, ownerId: string) => {
-  const response = await axios.post(`${BASE_URL}/community/create`, {
+  const response = await apiClient.post('/community/create', {
     title,
     description,
     ownerId,
@@ -63,7 +124,7 @@ export const updateCommunity = async (
   title: string,
   description: string
 ) => {
-  const response = await axios.put(`${BASE_URL}/community/${communityId}/update`, {
+  const response = await apiClient.put(`/community/${communityId}/update`, {
     title,
     description,
   });
@@ -72,14 +133,14 @@ export const updateCommunity = async (
 
 // delete a community
 export const deleteCommunity = async (communityId: string) => {
-  const response = await axios.delete(`${BASE_URL}/community/${communityId}/delete`);
+  const response = await apiClient.delete(`/community/${communityId}/delete`);
   return response.data;
 }
 
 ///////////////////////////// Post Management /////////////////////////////
 // get all posts in community by community id
 export const getPostsInCommunity = async (communityId: string) => {
-  const response = await axios.get(`${BASE_URL}/post/${communityId}/community`);
+  const response = await apiClient.get(`/post/${communityId}/community`);
   return response.data;
 };
 
@@ -90,7 +151,7 @@ export const createPost = async (
   title: string,
   content: string
 ) => {
-  const response = await axios.post(`${BASE_URL}/post/create`, {
+  const response = await apiClient.post('/post/create', {
     communityId,
     authorId,
     title,
@@ -105,7 +166,7 @@ export const updatePost = async (
   title: string,
   content: string
 ) => {
-  const response = await axios.put(`${BASE_URL}/post/${postId}/update`, {
+  const response = await apiClient.put(`/post/${postId}/update`, {
     title,
     content,
   });
@@ -114,7 +175,7 @@ export const updatePost = async (
 
 // delete a post
 export const deletePost = async (postId: string) => {
-  const response = await axios.delete(`${BASE_URL}/post/${postId}/delete`);
+  const response = await apiClient.delete(`/post/${postId}/delete`);
   return response.data;
 };
 
@@ -123,8 +184,8 @@ export const getPostByTitleInCommunity = async (
   communityId: string,
   title: string
 ) => {
-  const response = await axios.get(
-    `${BASE_URL}/post/${communityId}/search?title=${title}`
+  const response = await apiClient.get(
+    `/post/${communityId}/search?title=${title}`
   );
   return response.data;
 };
@@ -132,13 +193,13 @@ export const getPostByTitleInCommunity = async (
 ///////////////////////////// Comment Management /////////////////////////////
 // get all comments in post by post id
 export const getCommentsInPost = async (postId: string) => {
-  const response = await axios.get(`${BASE_URL}/comment/${postId}/post`);
+  const response = await apiClient.get(`/comment/${postId}/post`);
   return response.data;
 };
 
 // get replies to a comment by comment id
 export const getRepliesToComment = async (commentId: string) => {
-  const response = await axios.get(`${BASE_URL}/comment/${commentId}/replies`);
+  const response = await apiClient.get(`/comment/${commentId}/replies`);
   return response.data;
 };
 
@@ -149,7 +210,7 @@ export const createComment = async (
   content: string,
   parentCommentId?: string
 ) => {
-  const response = await axios.post(`${BASE_URL}/comment/create`, {
+  const response = await apiClient.post(`/comment/create`, {
     postId,
     userId,
     content,
@@ -160,7 +221,7 @@ export const createComment = async (
 
 // update a comment
 export const updateComment = async (commentId: string, content: string) => {
-  const response = await axios.put(`${BASE_URL}/comment/${commentId}/update`, {
+  const response = await apiClient.put(`/comment/${commentId}/update`, {
     content,
   });
   return response.data;
@@ -168,8 +229,8 @@ export const updateComment = async (commentId: string, content: string) => {
 
 // delete a comment
 export const deleteComment = async (commentId: string) => {
-  const response = await axios.delete(
-    `${BASE_URL}/comment/${commentId}/delete`
+  const response = await apiClient.delete(
+    `/comment/${commentId}/delete`
   );
   return response.data;
 };
@@ -180,7 +241,7 @@ export const voteComment = async (
   voteValue: number,
   userId: string
 ) => {
-  const response = await axios.post(`${BASE_URL}/comment/vote`, {
+  const response = await apiClient.post(`/comment/vote`, {
     commentId,
     voteValue,
     userId,
@@ -191,27 +252,27 @@ export const voteComment = async (
 ///////////////////////////// User Management /////////////////////////////
 // get all users
 export const getAllUsers = async () => {
-  const response = await axios.get(`${BASE_URL}/user`);
+  const response = await apiClient.get(`/user`);
   return response.data;
 };
 
 // get user by id
 export const getUserById = async (id: string) => {
-  const response = await axios.get(`${BASE_URL}/user/${id}`);
+  const response = await apiClient.get(`/user/${id}`);
   return response.data;
 };
 
 // get user by username
 export const getUsersByUsername = async (username: string) => {
-  const response = await axios.get(
-    `${BASE_URL}/user/search?username=${username}`
+  const response = await apiClient.get(
+    `/user/search?username=${username}`
   );
   return response.data;
 };
 
 // sign up user
 export const signUpUser = async (username: string, password: string) => {
-  const response = await axios.post(`${BASE_URL}/user/create`, {
+  const response = await apiClient.post(`/user/create`, {
     username,
     password,
   });
@@ -230,7 +291,7 @@ export const updateUser = async (
   username: string,
   password: string
 ) => {
-  const response = await axios.put(`${BASE_URL}/user/${userId}/update`, {
+  const response = await apiClient.put(`/user/${userId}/update`, {
     username,
     password,
   });
@@ -239,35 +300,35 @@ export const updateUser = async (
 
 // delete user
 export const deleteUser = async (userId: string) => {
-  const response = await axios.delete(`${BASE_URL}/user/${userId}/delete`);
+  const response = await apiClient.delete(`/user/${userId}/delete`);
   return response.data;
 };
 
 // get communities of a user by user id
 export const getCommunitiesOfUser = async (userId: string) => {
-  const response = await axios.get(`${BASE_URL}/user/${userId}/communities`);
+  const response = await apiClient.get(`/user/${userId}/communities`);
   return response.data;
 };
 
 ///////////////////////////// Node and Edge Management /////////////////////////////
 // get all nodes and edges in community by community id
 export const getGraphInCommunity = async (communityId: string) => {
-  const response = await axios.get(
-    `${BASE_URL}/node/${communityId}/graph`
+  const response = await apiClient.get(
+    `/node/${communityId}/graph`
   );
   return response.data;
 };
 
 // get all node proposals in community by community id
 export const getNodeProposalsInCommunity = async (communityId: string) => {
-  const response = await axios.get(`${BASE_URL}/node/${communityId}/proposal`);
+  const response = await apiClient.get(`/node/${communityId}/proposal`);
   return response.data;
 };
 
 
 // get all edge proposals in community by community id
 export const getEdgeProposalsInCommunity = async (communityId: string) => {
-  const response = await axios.get(`${BASE_URL}/edge/${communityId}/proposal`);
+  const response = await apiClient.get(`/edge/${communityId}/proposal`);
   return response.data;
 };
 
@@ -286,7 +347,7 @@ export const getGraphProposalsInCommunity = async (communityId: string) => {
       error: null,
     },
   };
-  // const response = await axios.get(`${BASE_URL}/graph/proposals/${communityId}/community`);
+  // const response = await apiClient.get(`/graph/proposals/${communityId}/community`);
   return response.data;
 };
 
@@ -308,23 +369,19 @@ export const createNodeProposal = async (
     properties,
     proposalType
   });
-  try {
-    const payload: any = {
-      communityId,
-      userId,
-      name,
-      labels,
-      properties,
-      proposalType,
-    };
-    if (nodeId) {
-      payload.nodeId = nodeId;
-    }
-    const response = await axios.post(`${BASE_URL}/node/proposal`, payload);
-    return response.data;
-  } catch (err: any) {
-    return err.response?.data;
+  const payload: any = {
+    communityId,
+    userId,
+    name,
+    labels,
+    properties,
+    proposalType,
+  };
+  if (nodeId) {
+    payload.nodeId = nodeId;
   }
+  const response = await apiClient.post(`/node/proposal`, payload);
+  return response.data;
 };
 
 // create an edge proposal
@@ -338,24 +395,20 @@ export const createEdgeProposal = async (
   proposalType: "CREATE" | "UPDATE" | "DELETE",
   edgeId?: string
 ) => {
-  try {
-    const payload: any = {
-      communityId,
-      userId,
-      sourceId,
-      targetId,
-      type,
-      properties,
-      proposalType,
-    };
-    if (edgeId) {
-      payload.edgeId = edgeId;
-    }
-    const response = await axios.post(`${BASE_URL}/edge/proposal`, payload);
-    return response.data;
-  } catch (err: any) {
-    return err.response?.data;
+  const payload: any = {
+    communityId,
+    userId,
+    sourceId,
+    targetId,
+    type,
+    properties,
+    proposalType,
+  };
+  if (edgeId) {
+    payload.edgeId = edgeId;
   }
+  const response = await apiClient.post(`/edge/proposal`, payload);
+  return response.data;
 };
 
 // vote a node proposal with upvote or downvote or none as +1 or -1 or 0
@@ -364,16 +417,12 @@ export const voteNodeProposal = async (
   vote: number,
   userId: string
 ) => {
-  try {
-    const response = await axios.post(`${BASE_URL}/node/proposal/vote`, {
-      proposalId,
-      voteValue: vote,
-      userId,
-    });
-    return response.data;
-  } catch (err: any) {
-    return err.response?.data;
-  }
+  const response = await apiClient.post(`/node/proposal/vote`, {
+    proposalId,
+    voteValue: vote,
+    userId,
+  });
+  return response.data;
 };
 
 // vote a edge proposal with upvote or downvote or none as +1 or -1 or 0
@@ -382,7 +431,7 @@ export const voteEdgeProposal = async (
   vote: number,
   userId: string
 ) => {
-  const response = await axios.post(`${BASE_URL}/edge/proposal/vote`, {
+  const response = await apiClient.post(`/edge/proposal/vote`, {
     proposalId: proposalId,
     voteValue: vote,
     userId: userId,
@@ -396,49 +445,22 @@ export const queryKnowledgeGraph = async (
   communityId: string,
   question: string
 ) => {
-  try {
-    const response = await axios.post(
-      `${BASE_URL}/query`,
-      {
-        question,
-        communityId,
-      }
-    );
-    const res = response.data;
-    const result = {
-      "success": res.success,
-      "data": {
-        "answer": res.data.answer,
-        "nodes": res.data.nodes,
-        "edges": res.data.edges
-      }
+  const response = await apiClient.post(
+    `/query`,
+    {
+      question,
+      communityId,
     }
-    console.log("queryKnowledgeGraph result:", result);
-    return result;
-  } catch (err: any) {
-    console.error("Error querying knowledge graph:", err);
-    return {  
-      "success": true,
-      "data": {
-          "answer": "The Ark Location is an important entity with several key attributes. Its estimated time of arrival (ETA) is specified as 3 days. For its defense, the Ark Location relies on Metroplex. Furthermore, its current position is identified as the Iacon Data centre.",
-          "nodes": [
-              {
-                  "id": "4:8eefa8fc-22bf-4992-b648-f9c4e4c8cc01:10",
-                  "name": "Ark Location",
-                  "labels": [
-                      "Searchable",
-                      "Location"
-                  ],
-                  "properties": {
-                      "ETA": "3 days",
-                      "defense": "Metroplex",
-                      "position": "Iacon Data centre",
-                      "communityId": "29b60d32-c5f4-40a8-b8b6-06fb44e61bc7"
-                  }
-              }
-          ],
-          "edges": []
-      }
-    };
-};
+  );
+  const res = response.data;
+  const result = {
+    "success": res.success,
+    "data": {
+      "answer": res.data.answer,
+      "nodes": res.data.nodes,
+      "edges": res.data.edges
+    }
+  }
+  console.log("queryKnowledgeGraph result:", result);
+  return result;
 };

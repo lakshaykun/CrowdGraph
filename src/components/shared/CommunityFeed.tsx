@@ -156,21 +156,18 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
           ...prev,
           [parentId]: [...(prev[parentId] || []), newComment],
         }));
-        toast.success("Reply posted successfully!");
       } else {
         // This is a top-level comment - add it directly to the post's comments
         setComments((prev) => ({
           ...prev,
           [postId]: [...(prev[postId] || []), newComment],
         }));
-        toast.success("Comment posted successfully!");
       }
       
       // Clear the text input
       setCommentText((prev) => ({ ...prev, [postId + (parentId ?? "")]: "" }));
     } catch (err) {
       console.error("Failed to add comment:", err);
-      toast.error("Failed to add comment. Please try again.");
     }
   };
 
@@ -196,10 +193,8 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
       setAllPosts((prev) => [newPost, ...prev]);
       setNewPostTitle("");
       setNewPostContent("");
-      toast.success("Post created successfully!");
     } catch (err) {
       console.error("Failed to create post:", err);
-      toast.error("Failed to create post. Please try again.");
     } finally {
       setPosting(false);
     }
@@ -224,10 +219,8 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
       setEditingPost(null);
       setEditPostTitle("");
       setEditPostContent("");
-      toast.success("Post updated successfully!");
     } catch (err) {
       console.error("Failed to update post:", err);
-      toast.error("Failed to update post. Please try again.");
     }
   };
 
@@ -237,10 +230,9 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
       setPosts((prev) => prev.filter(p => p.id !== post.id));
       setAllPosts((prev) => prev.filter(p => p.id !== post.id));
       setDeleteConfirmPost(null);
-      toast.success("Post deleted successfully!");
+      // Post delete handled by mutation cache invalidation
     } catch (err) {
       console.error("Failed to delete post:", err);
-      toast.error("Failed to delete post. Please try again.");
     }
   };
 
@@ -277,10 +269,9 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
       
       setEditingComment(null);
       setEditCommentContent("");
-      toast.success("Comment updated successfully!");
+      // Comment update handled by mutation cache invalidation
     } catch (err) {
       console.error("Failed to update comment:", err);
-      toast.error("Failed to update comment. Please try again.");
     }
   };
 
@@ -304,7 +295,7 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
       }
       
       setDeleteConfirmComment(null);
-      toast.success("Comment deleted successfully!");
+      // Comment delete handled by mutation cache invalidation
     } catch (err) {
       console.error("Failed to delete comment:", err);
       toast.error("Failed to delete comment. Please try again.");
@@ -361,7 +352,7 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
         }));
       }
 
-      toast.success(newVote === 1 ? "Upvoted!" : newVote === -1 ? "Downvoted!" : "Vote removed");
+      // Vote success - handled by mutation cache invalidation
     } catch (err) {
       console.error("Failed to vote on comment:", err);
       // Revert optimistic update

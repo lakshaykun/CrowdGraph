@@ -3,6 +3,7 @@ import {
   useMutation, 
   useQueryClient,
 } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { queryKeys, CACHE_TIMES } from '@/config/queryClient';
 import * as api from '@/services/api';
 
@@ -396,6 +397,13 @@ export function useCreateNodeProposal(options?: any) {
       queryClient.invalidateQueries({ 
         queryKey: queryKeys.graph.byCommunity(variables.communityId) 
       });
+      // Refetch in background
+      queryClient.refetchQueries({ 
+        queryKey: queryKeys.proposals.byCommunity(variables.communityId) 
+      });
+      queryClient.refetchQueries({ 
+        queryKey: queryKeys.graph.byCommunity(variables.communityId) 
+      });
     },
     ...options,
   });
@@ -417,6 +425,13 @@ export function useCreateEdgeProposal(options?: any) {
       queryClient.invalidateQueries({ 
         queryKey: queryKeys.graph.byCommunity(variables.communityId) 
       });
+      // Refetch in background
+      queryClient.refetchQueries({ 
+        queryKey: queryKeys.proposals.byCommunity(variables.communityId) 
+      });
+      queryClient.refetchQueries({ 
+        queryKey: queryKeys.graph.byCommunity(variables.communityId) 
+      });
     },
     ...options,
   });
@@ -432,9 +447,12 @@ export function useVoteNodeProposal(options?: any) {
     mutationFn: (vars: any) =>
       api.voteNodeProposal(vars.proposalId, vars.vote, vars.userId),
     onSuccess: () => {
+      toast.success('Vote recorded successfully!');
       // Note: We don't have communityId here, so we invalidate all proposals
       // In a real app, you might pass communityId or use a more specific key
       queryClient.invalidateQueries({ queryKey: queryKeys.proposals.all });
+      // Refetch in background
+      queryClient.refetchQueries({ queryKey: queryKeys.proposals.all });
     },
     ...options,
   });
@@ -450,8 +468,11 @@ export function useVoteEdgeProposal(options?: any) {
     mutationFn: (vars: any) =>
       api.voteEdgeProposal(vars.proposalId, vars.vote, vars.userId),
     onSuccess: () => {
+      toast.success('Vote recorded successfully!');
       // Invalidate all proposals since we don't have communityId
       queryClient.invalidateQueries({ queryKey: queryKeys.proposals.all });
+      // Refetch in background
+      queryClient.refetchQueries({ queryKey: queryKeys.proposals.all });
     },
     ...options,
   });
@@ -510,6 +531,10 @@ export function useCreatePost(options?: any) {
       queryClient.invalidateQueries({ 
         queryKey: queryKeys.post.byCommunity(variables.communityId) 
       });
+      // Refetch in background to reload the list
+      queryClient.refetchQueries({ 
+        queryKey: queryKeys.post.byCommunity(variables.communityId) 
+      });
     },
     ...options,
   });
@@ -527,6 +552,8 @@ export function useUpdatePost(options?: any) {
     onSuccess: () => {
       // Invalidate all posts since we don't have communityId
       queryClient.invalidateQueries({ queryKey: queryKeys.post.lists() });
+      // Refetch in background
+      queryClient.refetchQueries({ queryKey: queryKeys.post.lists() });
     },
     ...options,
   });
@@ -542,6 +569,8 @@ export function useDeletePost(options?: any) {
     mutationFn: (postId: any) => api.deletePost(postId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.post.lists() });
+      // Refetch in background
+      queryClient.refetchQueries({ queryKey: queryKeys.post.lists() });
     },
     ...options,
   });
@@ -596,6 +625,10 @@ export function useCreateComment(options?: any) {
       queryClient.invalidateQueries({ 
         queryKey: queryKeys.comment.byPost(variables.postId) 
       });
+      // Refetch in background to reload comments list
+      queryClient.refetchQueries({ 
+        queryKey: queryKeys.comment.byPost(variables.postId) 
+      });
     },
     ...options,
   });
@@ -613,6 +646,8 @@ export function useUpdateComment(options?: any) {
     onSuccess: () => {
       // Invalidate all comments since we don't have postId
       queryClient.invalidateQueries({ queryKey: queryKeys.comment.all });
+      // Refetch in background
+      queryClient.refetchQueries({ queryKey: queryKeys.comment.all });
     },
     ...options,
   });
@@ -628,6 +663,8 @@ export function useDeleteComment(options?: any) {
     mutationFn: (commentId: any) => api.deleteComment(commentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.comment.all });
+      // Refetch in background
+      queryClient.refetchQueries({ queryKey: queryKeys.comment.all });
     },
     ...options,
   });
@@ -644,6 +681,8 @@ export function useVoteComment(options?: any) {
       api.voteComment(vars.commentId, vars.voteValue, vars.userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.comment.all });
+      // Refetch in background
+      queryClient.refetchQueries({ queryKey: queryKeys.comment.all });
     },
     ...options,
   });

@@ -1,4 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 /**
  * Cache duration constants (in milliseconds)
@@ -50,21 +51,42 @@ const GARBAGE_COLLECTION_TIME = 1000 * 60 * 60; // 1 hour
  * - cacheTime: How long data stays in cache even if not being used
  * - retry: Number of retries on failed requests
  * - retryDelay: Exponential backoff for retries
+ * - Global error handling: Show toast notifications for failed queries/mutations
  */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 0, // Data becomes stale immediately after fetch (we'll override per query)
       gcTime: GARBAGE_COLLECTION_TIME, // Keep data in cache for 1 hour
-      retry: 2, // Retry failed requests twice
+      retry: (failureCount, error: any) => {
+        // Don't retry on 4xx errors (client errors)
+        if (error?.response?.status >= 400 && error?.response?.status < 500) {
+          return false;
+        }
+        // Retry up to 2 times for other errors
+        return failureCount < 2;
+      },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff: 1s, 2s, 4s, etc.
       refetchOnWindowFocus: true, // Refetch when window regains focus (important for multi-tab apps)
       refetchOnReconnect: true, // Refetch when connection is restored
       refetchOnMount: true, // Refetch stale data when component mounts
     },
     mutations: {
-      retry: 1, // Retry mutations once on failure
+      retry: (failureCount, error: any) => {
+        // Don't retry on 4xx errors (client errors like validation failures)
+        if (error?.response?.status >= 400 && error?.response?.status < 500) {
+          return false;
+        }
+        // Retry once for network errors or 5xx errors
+        return failureCount < 1;
+      },
       retryDelay: 1000,
+      // Global error handler for mutations
+      onError: (error: any) => {
+        console.error('Mutation error:', error);
+        const message = error?.response?.data?.error || error?.message || 'Operation failed';
+        toast.error(message);
+      },
     },
   },
 });
