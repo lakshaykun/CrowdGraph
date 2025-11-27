@@ -77,6 +77,27 @@ export function useGetCommunitiesOfUser(
 }
 
 /**
+ * Get user's credits in a community
+ * Cache: 2 minutes (frequently updated during voting)
+ */
+export function useGetUserCredits(
+  userId: string,
+  communityId: string,
+  options?: any
+) {
+  return useQuery({
+    queryKey: queryKeys.user.credits(userId, communityId),
+    queryFn: async () => {
+      const response = await api.getUserCredits(userId, communityId);
+      return response?.data || response;
+    },
+    staleTime: CACHE_TIMES.CREDITS,
+    enabled: !!userId && !!communityId,
+    ...options,
+  });
+}
+
+/**
  * Mutation: Sign up a new user
  * Invalidates: user list
  */

@@ -6,7 +6,7 @@ const BASE_URL = "https://crowdgraph.onrender.com";
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 30000, // 30 second timeout
+  timeout: 120000, // 2 minutes timeout
   headers: {
     'Content-Type': 'application/json',
   },
@@ -279,10 +279,14 @@ export const signUpUser = async (username: string, password: string) => {
   return response.data;
 };
 
-// sign in user
+// sign in user gives success true/false or success false and error message
 export const signInUser = async (username: string, _password: string) => {
-  const response = await getUsersByUsername(username);
-  return response;
+  const response = await apiClient.post('/auth/login', {
+    username,
+    password: _password,
+  })
+  console.log("signInUser response:", response.data);
+  return response.data;
 };
 
 // update user
@@ -307,6 +311,12 @@ export const deleteUser = async (userId: string) => {
 // get communities of a user by user id
 export const getCommunitiesOfUser = async (userId: string) => {
   const response = await apiClient.get(`/user/${userId}/communities`);
+  return response.data;
+};
+
+// get user's credits in a community
+export const getUserCredits = async (userId: string, communityId: string) => {
+  const response = await apiClient.get(`/user/${userId}/${communityId}/credits`);
   return response.data;
 };
 

@@ -2,13 +2,14 @@ import React, { useRef, useEffect, useMemo, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { useTheme } from "@/context/ThemeContext";
 
-const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; graphData: { nodes: any[]; edges: any[] }; onUpdate?: (type: 'node' | 'edge', data: any) => void; onDelete?: (type: 'node' | 'edge', id: string) => void; onOpenEditModal?: (type: 'node' | 'edge', data: any) => void }> = ({ 
+const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; graphData: { nodes: any[]; edges: any[] }; onUpdate?: (type: 'node' | 'edge', data: any) => void; onDelete?: (type: 'node' | 'edge', id: string) => void; onOpenEditModal?: (type: 'node' | 'edge', data: any) => void; isLoading?: boolean }> = ({ 
   onExpand, 
   isExpanded = false,
   graphData: { nodes: dummyNodes, edges: dummyEdges },
   onUpdate,
   onDelete,
-  onOpenEditModal
+  onOpenEditModal,
+  isLoading = false
 }) => {
   const fgRef = useRef<any>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -124,7 +125,7 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
       if (node && typeof (node as any).x === 'number' && typeof (node as any).y === 'number') {
         fgRef.current.centerAt((node as any).x, (node as any).y, 500);
         fgRef.current.zoom(isSmall ? 8 : 12, 500);
-        showInfo(node.label, node.group, node.id || "", node.details, 'node', node);
+        showInfo(node.label, node.labels || [node.group], node.details, 'node', node);
       }
     } else {
       const link = graphData.links.find(l => l.id === result.id);
@@ -133,7 +134,7 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
         const midY = ((link.source?.y || 0) + (link.target?.y || 0)) / 2;
         fgRef.current.centerAt(midX, midY, 500);
         fgRef.current.zoom(isSmall ? 8 : 12, 500);
-        showInfo(link.label, 'Edge', link.id, link.details, 'edge', link);
+        showInfo(link.label, link.label, link.details, 'edge', link);
       }
     }
   };
@@ -195,14 +196,26 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
   // Show info box (no React state)
   const showInfo = (
     title: string,
-    type: string,
-    id: string,
+    typeOrLabels: string | string[],
     details: any[],
     itemType: 'node' | 'edge' = 'node',
     itemData: any = {}
   ) => {
     const info = infoRef.current;
     if (!info) return;
+
+    // Format the type/labels section
+    let typeLabelsHtml = '';
+    if (itemType === 'node' && Array.isArray(typeOrLabels)) {
+      // For nodes, show all labels
+      const labelsHtml = typeOrLabels
+        .map(label => `<span style="display:inline-block;padding:2px 8px;background:${theme.colors.primary}20;color:${theme.colors.primary};border-radius:4px;font-size:0.75rem;margin-right:4px;margin-bottom:4px;">${label}</span>`)
+        .join('');
+      typeLabelsHtml = `<div style="color:${theme.colors.textSecondary};font-size:0.85rem;margin-bottom:8px;"><span style="font-weight:600;display:block;margin-bottom:4px;">Labels:</span><div>${labelsHtml || '<span style="color:' + theme.colors.textSecondary + ';font-style:italic;">No labels</span>'}</div></div>`;
+    } else {
+      // For edges, show the type
+      typeLabelsHtml = `<div style="color:${theme.colors.textSecondary};font-size:0.85rem;margin-bottom:4px;"><span style="font-weight:600;">Type:</span> ${Array.isArray(typeOrLabels) ? typeOrLabels[0] : typeOrLabels}</div>`;
+    }
 
     const html = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
@@ -222,14 +235,7 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
           theme.colors.textSecondary
         };cursor:pointer;font-size:1.2rem;padding:0;width:20px;height:20px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;">✕</button>
       </div>
-      <div style="color:${
-        theme.colors.textSecondary
-      };font-size:0.85rem;margin-bottom:4px;"><span style="font-weight:600;">Type:</span> ${type}</div>
-      <div style="color:${
-        theme.colors.textSecondary
-      };font-size:0.8rem;margin-bottom:8px;"><span style="font-weight:600;">ID:</span> <span style="color:${
-      theme.colors.text
-    };font-family:monospace;">${id}</span></div>
+      ${typeLabelsHtml}
       <hr style="border:none;border-top:1px solid ${
         theme.colors.border
       };margin:8px 0;" />
@@ -355,11 +361,11 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
         }}
         onNodeClick={(node) => {
           setSelectedResult({ type: 'node', ...node });
-          showInfo(node.label, node.group, node.id || "", node.details, 'node', node);
+          showInfo(node.label, node.labels || [node.group], node.details, 'node', node);
         }}
         onLinkClick={(link) => {
           setSelectedResult({ type: 'edge', ...link });
-          showInfo(link.label, "Edge", link.id || "", link.details, 'edge', link);
+          showInfo(link.label, link.label, link.details, 'edge', link);
         }}
         onNodeHover={(node) => {
           if (node) {
@@ -811,7 +817,7 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
       )}
 
       {/* Info Indicator for small view */}
-      {isSmall && !isExpanded && (
+      {isSmall && !isExpanded && dummyNodes.length === 0 && !isLoading && (
         <div
           style={{
             position: "absolute",
@@ -828,9 +834,53 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
             border: `1px solid ${theme.colors.primary}44`,
           }}
         >
-          Click nodes to explore
+          Graph is empty
         </div>
       )}
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: `${theme.colors.background}dd`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            borderRadius: "8px",
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                border: `3px solid ${theme.colors.primary}33`,
+                borderTop: `3px solid ${theme.colors.primary}`,
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+                margin: "0 auto 12px",
+              }}
+            />
+            <p style={{ color: theme.colors.text, fontSize: "14px", fontWeight: "500" }}>
+              Loading graph...
+            </p>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
 
       {/* Update/Delete Modal */}
       {modalState && (

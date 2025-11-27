@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { getAllUsers } from "@/services/api";
+import { signInUser } from "@/services/api";
 import { toast } from "sonner";
 
 
@@ -38,37 +38,38 @@ function Login() {
     setIsLoading(true);
 
     try {
-      // Call the API to get all users
-      const response = await getAllUsers();
+      // Call the signInUser API to authenticate
+      const authResponse = await signInUser(formData.username, formData.password);
 
-      if (response?.data && Array.isArray(response.data)) {
-        // Search for user with matching username
-        const user = response.data.find(
-          (u: any) => u.username.toLowerCase() === formData.username.toLowerCase()
-        );
-
-        if (user) {
-          // User found - login the user
-          const userData = {
-            id: user.id,
-            username: user.username,
-            createdAt: user.createdAt,
-            reputation: user.reputation || 0,
-          };
+      if (authResponse?.success) {
+        // Authentication successful - now fetch user data
+        try {
+          const user = authResponse.data;
           
-          login(userData);
-          toast.success(`Welcome back, ${formData.username}!`);
-          navigate("/Communities");
-        } else {
-          // User not found
-          toast.error("Username not found. Please check and try again.");
+          if (user) {
+            const userData = {
+              id: user.id,
+              username: user.username,
+              createdAt: user.createdAt,
+              reputation: user.reputation || 0,
+            };
+            
+            login(userData);
+            toast.success(`Welcome back, ${formData.username}!`);
+            navigate("/Communities");
+          } else {
+            toast.error("Unable to fetch user data. Please try again.");
+          }
+        } catch (userError: any) {
+          console.error("Error fetching user data:", userError);
+          toast.error("Unable to fetch user data. Please try again.");
         }
       } else {
-        toast.error("Unable to fetch users. Please try again.");
+        toast.error(authResponse?.error || "Login failed. Please check your credentials and try again.");
       }
     } catch (error: any) {
       console.error("Login error:", error);
-      toast.error("An error occurred during login. Please try again.");
+      toast.error(error?.response?.data?.error || "An error occurred during login. Please try again.");
     } finally {
       setIsLoading(false);
     }

@@ -25,11 +25,13 @@ function ProposalDetailModal({
   onClose,
   proposal,
   onVote,
+  graphData = { nodes: [], edges: [] },
 }: {
   isOpen: boolean;
   onClose: () => void;
   proposal: NodeProposal | EdgeProposal | null;
   onVote?: (proposalId: string, proposalType: 'node' | 'edge', voteValue: number) => Promise<void>;
+  graphData?: { nodes: any[]; edges: any[] };
 }) {
   if (!proposal) return null;
 
@@ -66,10 +68,6 @@ function ProposalDetailModal({
             
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-muted-foreground text-xs">ID</p>
-                <p className="text-foreground font-medium break-all">{proposal.id}</p>
-              </div>
-              <div>
                 <p className="text-muted-foreground text-xs">Proposal Type</p>
                 <p className="text-foreground font-medium">{proposal.proposalType}</p>
               </div>
@@ -92,10 +90,6 @@ function ProposalDetailModal({
               <div>
                 <p className="text-muted-foreground text-xs">Username</p>
                 <p className="text-foreground font-medium">{proposal.username || "Unknown"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">User ID</p>
-                <p className="text-foreground font-medium break-all text-xs">{proposal.userId}</p>
               </div>
             </div>
           </div>
@@ -135,12 +129,12 @@ function ProposalDetailModal({
                   <p className="text-foreground font-medium">{(proposal as EdgeProposal).type}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Source ID</p>
-                  <p className="text-foreground font-medium break-all text-xs">{(proposal as EdgeProposal).sourceId}</p>
+                  <p className="text-muted-foreground text-xs">Source</p>
+                  <p className="text-foreground font-medium">{graphData.nodes.find((n: any) => n.id === (proposal as EdgeProposal).sourceId)?.name || (proposal as EdgeProposal).sourceId}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Target ID</p>
-                  <p className="text-foreground font-medium break-all text-xs">{(proposal as EdgeProposal).targetId}</p>
+                  <p className="text-muted-foreground text-xs">Target</p>
+                  <p className="text-foreground font-medium">{graphData.nodes.find((n: any) => n.id === (proposal as EdgeProposal).targetId)?.name || (proposal as EdgeProposal).targetId}</p>
                 </div>
               </div>
             </div>
@@ -214,24 +208,6 @@ function ProposalDetailModal({
             )}
           </div>
 
-          {/* Community Info */}
-          {(proposal.communityId || proposal.communityName) && (
-            <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
-              <h3 className="font-semibold text-foreground">Community</h3>
-              {proposal.communityId && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Community ID</p>
-                  <p className="text-foreground font-medium break-all text-xs">{proposal.communityId}</p>
-                </div>
-              )}
-              {proposal.communityName && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Community Name</p>
-                  <p className="text-foreground font-medium">{proposal.communityName}</p>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -244,11 +220,15 @@ export function ContributionQueueSection({
   proposalsLoading,
   onViewMore,
   onVote,
+  isCommunityMember = false,
+  graphData = { nodes: [], edges: [] },
 }: {
   proposalsData: GraphProposals | null;
   proposalsLoading: boolean;
   onViewMore: () => void;
   onVote: (proposalId: string, proposalType: 'node' | 'edge', voteValue: number) => Promise<void>;
+  isCommunityMember?: boolean;
+  graphData?: { nodes: any[]; edges: any[] };
 }) {
   const [selectedProposal, setSelectedProposal] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -297,6 +277,8 @@ export function ContributionQueueSection({
                 key={`${proposal.kind}-${proposal.id}`}
                 proposal={proposal}
                 onVote={onVote}
+                isCommunityMember={isCommunityMember}
+                graphData={graphData}
                 onReview={(p) => {
                   setSelectedProposal(p);
                   setIsDetailOpen(true);
@@ -337,6 +319,7 @@ export function ContributionQueueSection({
         onClose={() => setIsDetailOpen(false)}
         proposal={selectedProposal}
         onVote={onVote}
+        graphData={graphData}
       />
     </>
   );
@@ -349,12 +332,14 @@ export function ContributionQueueModal({
   proposalsData,
   proposalsLoading,
   onVote,
+  isCommunityMember = false,
 }: {
   isOpen: boolean;
   onClose: () => void;
   proposalsData: GraphProposals | null;
   proposalsLoading: boolean;
   onVote: (proposalId: string, proposalType: 'node' | 'edge', voteValue: number) => Promise<void>;
+  isCommunityMember?: boolean;
 }) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
   const [typeFilter, setTypeFilter] = useState<'all' | 'node' | 'edge'>('all');
@@ -413,6 +398,7 @@ export function ContributionQueueModal({
       <ContributionCard
         proposal={proposal}
         onVote={onVote}
+        isCommunityMember={isCommunityMember}
         onReview={(p) => {
           setSelectedProposal(p);
           setIsDetailOpen(true);

@@ -4,9 +4,11 @@ interface ContributionCardProps {
   proposal: (NodeProposal | EdgeProposal) & { kind: 'node' | 'edge' };
   onVote: (proposalId: string, proposalType: 'node' | 'edge', voteValue: number) => Promise<void>;
   onReview: (proposal: NodeProposal | EdgeProposal) => void;
+  isCommunityMember?: boolean;
+  graphData?: { nodes: any[]; edges: any[] };
 }
 
-export function ContributionCard({ proposal, onVote, onReview }: ContributionCardProps) {
+export function ContributionCard({ proposal, onVote, onReview, isCommunityMember = false, graphData = { nodes: [], edges: [] } }: ContributionCardProps) {
   const isNode = proposal.kind === 'node';
   const nodeProposal = proposal as NodeProposal & { kind: 'node' };
   const edgeProposal = proposal as EdgeProposal & { kind: 'edge' };
@@ -88,10 +90,15 @@ export function ContributionCard({ proposal, onVote, onReview }: ContributionCar
           <div className="flex gap-5 mb-2 text-xs">
             <p className="text-muted-foreground">
               From:{' '}
-              <span className="text-foreground font-medium text-xs">{edgeProposal.sourceId.slice(0, 8)}...</span>
+              <span className="text-foreground font-medium text-xs">
+                {graphData.nodes.find((n: any) => n.id === edgeProposal.sourceId)?.name || edgeProposal.sourceId.slice(0, 8)}
+              </span>
             </p>
             <p className="text-muted-foreground">
-              To: <span className="text-foreground font-medium text-xs">{edgeProposal.targetId.slice(0, 8)}...</span>
+              To:{' '}
+              <span className="text-foreground font-medium text-xs">
+                {graphData.nodes.find((n: any) => n.id === edgeProposal.targetId)?.name || edgeProposal.targetId.slice(0, 8)}
+              </span>
             </p>
           </div>
         )}
@@ -102,32 +109,59 @@ export function ContributionCard({ proposal, onVote, onReview }: ContributionCar
         </p>
 
         <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => onVote(proposal.id, proposal.kind, 1)}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-success bg-success/5 hover:bg-success/10 border border-success/20 rounded transition-colors"
-          >
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-            {proposal.upvotes}
-          </button>
-          <button
-            onClick={() => onVote(proposal.id, proposal.kind, -1)}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-destructive bg-destructive/5 hover:bg-destructive/10 border border-destructive/20 rounded transition-colors"
-          >
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-            {proposal.downvotes}
-          </button>
+          {isCommunityMember ? (
+            <>
+              <button
+                onClick={() => onVote(proposal.id, proposal.kind, 1)}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-success bg-success/5 hover:bg-success/10 border border-success/20 rounded transition-colors"
+              >
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {proposal.upvotes}
+              </button>
+              <button
+                onClick={() => onVote(proposal.id, proposal.kind, -1)}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-destructive bg-destructive/5 hover:bg-destructive/10 border border-destructive/20 rounded transition-colors"
+              >
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {proposal.downvotes}
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground bg-muted/50 border border-muted-foreground/20 rounded cursor-not-allowed opacity-60">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {proposal.upvotes}
+              </span>
+              <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground bg-muted/50 border border-muted-foreground/20 rounded cursor-not-allowed opacity-60">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {proposal.downvotes}
+              </span>
+            </>
+          )}
           <button
             onClick={() => onReview(proposal)}
             className="ml-auto px-2 py-1 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded transition-colors whitespace-nowrap"

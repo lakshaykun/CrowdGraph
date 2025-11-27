@@ -1,8 +1,10 @@
 import { useNavigate, useParams, Link } from "react-router-dom";
 import SearchBar from "../../components/shared/SearchBar";
+import CreditsDisplay from "../../components/shared/CreditsDisplay";
 import { CommunityFeed } from "@/components/shared/CommunityFeed";
 import { ContributionQueueSection, ContributionQueueModal } from "@/components/shared/ContributionQueue";
 import { toast } from "sonner";
+import { parseStyledText } from "@/lib/utils";
 import {
   useGetCommunityById,
   useGetUsersInCommunity,
@@ -18,6 +20,7 @@ import {
   useUpdateCommunity,
   useDeleteCommunity,
   useQueryKnowledgeGraph,
+  useGetUserCredits,
 } from "@/hooks/useQueries";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -83,7 +86,7 @@ function CommunityFeedSection({
               </div>
             ) : (
               <p className="text-foreground text-sm sm:text-base leading-relaxed">
-                {searchAnswer}
+                {parseStyledText(searchAnswer || "")}
               </p>
             )}
           </div>
@@ -139,6 +142,13 @@ function CommunityDashboard() {
     refetch: refetchGraph
   } = useGetGraphInCommunity(communityId || "");
 
+  // Get user credits in community
+  const { 
+    data: creditsData = {} as any,
+    isLoading: creditsLoading,
+    error: creditsError
+  } = useGetUserCredits(user?.id || "", communityId || "");
+
   // Mutations
   const joinMutation = useJoinCommunity();
   const leaveMutation = useLeaveCommunity();
@@ -176,7 +186,7 @@ function CommunityDashboard() {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // React Query hook for knowledge graph query
-  const { data: queryResult } = useQueryKnowledgeGraph(
+  const { data: queryResult, isLoading: isQueryLoading } = useQueryKnowledgeGraph(
     communityId || "",
     searchQuery,
     { enabled: searchQuery.length > 0 }
@@ -194,6 +204,11 @@ function CommunityDashboard() {
     setSearchActive(true);
     setSearchAnswer("");
   };
+
+  // Update search loading state based on query hook
+  useEffect(() => {
+    setSearchLoading(isQueryLoading);
+  }, [isQueryLoading]);
 
   // Update search results when query result changes
   useEffect(() => {
@@ -336,13 +351,13 @@ function CommunityDashboard() {
   const [nodeName, setNodeName] = useState<string>("");
   const [nodeProperties, setNodeProperties] = useState<
     { key: string; value: string }[]
-  >([{ key: "", value: "" }]);
+  >([]);
 
   // --- Edge state ---
   const [edgeData, setEdgeData] = useState<Partial<Edge>>({});
   const [edgeProperties, setEdgeProperties] = useState<
     { key: string; value: string }[]
-  >([{ key: "", value: "" }]);
+  >([]);
 
   // --- Node property handlers ---
   const addNodeProperty = () =>
@@ -401,12 +416,6 @@ function CommunityDashboard() {
         formattedProps[p.key.trim()] = p.value;
       });
 
-    // Validate that at least 1 property is mandatory
-    if (Object.keys(formattedProps).length === 0) {
-      toast.error("At least one property is mandatory for a node!");
-      return;
-    }
-
     try {
       // Create node proposal with CREATE type
       await createNodeMutation.mutateAsync({
@@ -421,7 +430,7 @@ function CommunityDashboard() {
       setIsModalOpen(false);
       setNodeLabels([]);
       setNodeName("");
-      setNodeProperties([{ key: "", value: "" }]);
+      setNodeProperties([]);
     } catch (err) {
       toast.error("Error creating node proposal!");
     }
@@ -449,12 +458,6 @@ function CommunityDashboard() {
         formattedProps[p.key.trim()] = p.value;
       });
 
-    // Validate that at least 1 property is mandatory
-    if (Object.keys(formattedProps).length === 0) {
-      toast.error("At least one property is mandatory for an edge!");
-      return;
-    }
-
     try {
       // Create edge proposal with CREATE type
       await createEdgeMutation.mutateAsync({
@@ -469,7 +472,7 @@ function CommunityDashboard() {
 
       setIsModalOpen(false);
       setEdgeData({});
-      setEdgeProperties([{ key: "", value: "" }]);
+      setEdgeProperties([]);
     } catch (err) {
       toast.error("Error creating edge proposal!");
     }
@@ -727,10 +730,17 @@ function CommunityDashboard() {
               </div>
             </div>
             {isMemberOfCommunity ? (
-                <SearchBar
-                  placeholder="Search Query"
-                  onSearch={handleSearch}
-                />
+                <>
+                  <CreditsDisplay
+                    credits={creditsData?.credits}
+                    isLoading={creditsLoading}
+                    error={creditsError}
+                  />
+                  <SearchBar
+                    placeholder="Search Query"
+                    onSearch={handleSearch}
+                  />
+                </>
               ) : (
                 <div className="p-3 sm:p-4 bg-muted border-2 border-dashed border-border rounded-lg text-center">
                   <p className="text-xs sm:text-sm text-muted-foreground">
@@ -748,6 +758,7 @@ function CommunityDashboard() {
                   <KnowledgeGraph 
                     onExpand={() => setIsGraphModalOpen(true)} 
                     isExpanded={false} 
+                    isLoading={searchLoading}
                     graphData={searchActive ? searchGraphData : (graphData || { nodes: [], edges: [] })} 
                     onUpdate={handleGraphUpdate}
                     onDelete={handleGraphDelete}
@@ -787,6 +798,8 @@ function CommunityDashboard() {
                   proposalsLoading={proposalsLoading}
                   onViewMore={() => setIsContributionQueueModalOpen(true)}
                   onVote={handleVote}
+                  isCommunityMember={isMemberOfCommunity}
+                  graphData={graphData}
                 />
               </TabsContent>
             </Tabs>
@@ -807,6 +820,8 @@ function CommunityDashboard() {
               proposalsLoading={proposalsLoading}
               onViewMore={() => setIsContributionQueueModalOpen(true)}
               onVote={handleVote}
+              isCommunityMember={isMemberOfCommunity}
+              graphData={graphData}
             />
           </div>
         </div>
@@ -900,7 +915,6 @@ function CommunityDashboard() {
                               )
                             }
                           />
-                          {index > 0 && (
                           <Button
                             variant="ghost"
                             onClick={() => removeNodeProperty(index)}
@@ -908,7 +922,6 @@ function CommunityDashboard() {
                           >
                             ✕
                           </Button>
-                        )}
                         </div>
                       ))
                     )}
@@ -1003,15 +1016,13 @@ function CommunityDashboard() {
                             )
                           }
                         />
-                        {index > 0 && (
-                          <Button
-                            variant="ghost"
-                            onClick={() => removeEdgeProperty(index)}
-                            className="text-red-500"
-                          >
-                            ✕
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          onClick={() => removeEdgeProperty(index)}
+                          className="text-red-500"
+                        >
+                          ✕
+                        </Button>
                       </div>
                     ))}
                     <Button
@@ -1048,7 +1059,8 @@ function CommunityDashboard() {
           </DialogHeader>
           <div className="flex-1 overflow-hidden w-full h-full">
             <KnowledgeGraph 
-              isExpanded={true} 
+              isExpanded={true}
+              isLoading={searchLoading}
               graphData={graphData} 
               onUpdate={handleGraphUpdate}
               onDelete={handleGraphDelete}
@@ -1065,6 +1077,7 @@ function CommunityDashboard() {
         proposalsData={proposalsData}
         proposalsLoading={proposalsLoading}
         onVote={handleVote}
+        isCommunityMember={isMemberOfCommunity}
       />
 
       {/* Community Members Modal */}
@@ -1217,51 +1230,56 @@ function CommunityDashboard() {
                     No properties yet. Click below to add.
                   </p>
                 ) : (
-                  editModalData.properties.map((prop, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        placeholder="Key"
-                        value={prop.key}
-                        onChange={(e) => {
-                          const updated = [...editModalData.properties];
-                          updated[index].key = e.target.value;
-                          setEditModalData({
-                            ...editModalData,
-                            properties: updated,
-                          });
-                        }}
-                      />
-                      <Input
-                        placeholder="Value"
-                        value={prop.value}
-                        onChange={(e) => {
-                          const updated = [...editModalData.properties];
-                          updated[index].value = e.target.value;
-                          setEditModalData({
-                            ...editModalData,
-                            properties: updated,
-                          });
-                        }}
-                      />
-                      {index > 0 && (
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            const updated = editModalData.properties.filter(
-                              (_, i) => i !== index
-                            );
+                  editModalData.properties.map((prop, index) => {
+                    const isCommunityId = prop.key === 'communityId';
+                    return (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          placeholder="Key"
+                          value={prop.key}
+                          disabled={isCommunityId}
+                          onChange={(e) => {
+                            const updated = [...editModalData.properties];
+                            updated[index].key = e.target.value;
                             setEditModalData({
                               ...editModalData,
                               properties: updated,
                             });
                           }}
-                          className="text-red-500"
-                        >
-                          ✕
-                        </Button>
-                      )}
-                    </div>
-                  ))
+                        />
+                        <Input
+                          placeholder="Value"
+                          value={prop.value}
+                          disabled={isCommunityId}
+                          onChange={(e) => {
+                            const updated = [...editModalData.properties];
+                            updated[index].value = e.target.value;
+                            setEditModalData({
+                              ...editModalData,
+                              properties: updated,
+                            });
+                          }}
+                        />
+                        {!isCommunityId && (
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              const updated = editModalData.properties.filter(
+                                (_, i) => i !== index
+                              );
+                              setEditModalData({
+                                ...editModalData,
+                                properties: updated,
+                              });
+                            }}
+                            className="text-red-500"
+                          >
+                            ✕
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
 
                 <Button

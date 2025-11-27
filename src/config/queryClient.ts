@@ -32,6 +32,9 @@ export const CACHE_TIMES = {
   
   // Posts: 5 minutes - updated when new posts added
   POSTS: 1000 * 60 * 5,
+
+  // User credits: 2 minutes - frequently updated when voting
+  CREDITS: 1000 * 60 * 2,
 };
 
 /**
@@ -103,6 +106,7 @@ export const queryKeys = {
     byUsername: (username: string) => [...queryKeys.user.all, 'byUsername', username] as const,
     all_users: () => [...queryKeys.user.all, 'all'] as const,
     communities: (userId: string) => [...queryKeys.user.all, 'communities', userId] as const,
+    credits: (userId: string, communityId: string) => [...queryKeys.user.all, 'credits', userId, communityId] as const,
   },
 
   // Community queries
