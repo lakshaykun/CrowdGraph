@@ -577,8 +577,8 @@ function CommunityDashboard() {
           communityId!,
           user?.id!,
           nodeOrEdgeData.label || "",
-          [],
-          {},
+          nodeOrEdgeData.labels || [],
+          nodeOrEdgeData.details?.reduce((acc: any, d: any) => ({ ...acc, [d.key]: d.value }), {}) || {},
           "DELETE",
           nodeOrEdgeData.id
         );
@@ -595,7 +595,7 @@ function CommunityDashboard() {
           nodeOrEdgeData.source?.id || nodeOrEdgeData.sourceId || "",
           nodeOrEdgeData.target?.id || nodeOrEdgeData.targetId || "",
           nodeOrEdgeData.label || "",
-          {},
+          nodeOrEdgeData.details?.reduce((acc: any, d: any) => ({ ...acc, [d.key]: d.value }), {}) || {},
           "DELETE",
           nodeOrEdgeData.id
         );
@@ -1355,8 +1355,10 @@ function CommunityDashboard() {
                   onClick={() => {
                     const details: { key: string; value: string }[] = [];
                     editModalData.properties.forEach((prop) => {
-                      if (prop.key.trim() && prop.value.trim()) {
-                        details.push({ key: prop.key, value: prop.value });
+                      const key = typeof prop.key === 'string' ? prop.key : String(prop.key || '');
+                      const value = typeof prop.value === 'string' ? prop.value : String(prop.value || '');
+                      if (key.trim() && value.trim()) {
+                        details.push({ key, value });
                       }
                     });
 
