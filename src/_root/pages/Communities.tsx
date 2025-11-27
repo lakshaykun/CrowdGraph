@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CommunityGrid from "../../components/shared/CommunityGrid";
 import SearchBar from "../../components/shared/SearchBar";
-import type { Community } from "@/schema";
-import { getFeaturedCommunities, searchCommunities, createCommunity } from "@/services/api";
-import { useApi } from "@/hooks/apiHook";
+import {
+  useGetFeaturedCommunities,
+  useSearchCommunities,
+  useCreateCommunity,
+} from "@/hooks/useQueries";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {
@@ -22,37 +24,41 @@ import { Textarea } from "@/components/ui/textarea";
 function Communities() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: featuredCommunities, loading: loadingFeatured, callApi: callFeaturedCommunities } = useApi(getFeaturedCommunities);
-  const { data: searchResults, loading: searchLoading, error: searchError, callApi: callSearchCommunities } = useApi(searchCommunities);
-
-  const [communitiesToShow, setCommunitiesToShow] = useState<Community[]>(featuredCommunities || []);
+  
   const [searchQuery, setSearchQuery] = useState<string>("");
+  
+  // React Query hooks for communities
+  const { 
+    data: featuredCommunitiesData, 
+    isLoading: loadingFeatured 
+  } = useGetFeaturedCommunities();
+  
+  const { 
+    data: searchResultsData, 
+    isLoading: searchLoading, 
+    error: searchError 
+  } = useSearchCommunities(searchQuery, { 
+    enabled: searchQuery.trim().length > 0 
+  });
+  
+  const createCommunityMutation = useCreateCommunity();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [communityTitle, setCommunityTitle] = useState<string>("");
   const [communityDescription, setCommunityDescription] = useState<string>("");
-  const [isCreating, setIsCreating] = useState(false);
   
-
-  // Load featured communities on mount
-  useEffect(() => {
-    callFeaturedCommunities();
-  }, []);
-
-  // Call API when searchQuery changes
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setCommunitiesToShow(featuredCommunities || []);
-    } else {
-      callSearchCommunities(searchQuery);
-    }
-  }, [searchQuery, featuredCommunities]);
-
-  // Update results when API data changes
-  useEffect(() => {
-    if (searchResults && searchQuery.trim() !== "") {
-      setCommunitiesToShow(searchResults);
-    }
-  }, [searchResults, searchQuery]);
+  // Extract actual communities arrays from API responses
+  const featuredCommunities = Array.isArray(featuredCommunitiesData) 
+    ? featuredCommunitiesData 
+    : [];
+  const searchResults = Array.isArray(searchResultsData) 
+    ? searchResultsData 
+    : [];
+  
+  // Determine which communities to show based on search state
+  const communitiesToShow = searchQuery.trim() !== "" 
+    ? searchResults
+    : featuredCommunities;
 
   // Handle create community
   const handleCreateCommunity = async () => {
@@ -71,32 +77,27 @@ function Communities() {
       return;
     }
 
-    setIsCreating(true);
     try {
-      const response = await createCommunity(
-        communityTitle.trim(),
-        communityDescription.trim(),
-        user.id
-      );
+      const response = await createCommunityMutation.mutateAsync({
+        title: communityTitle.trim(),
+        description: communityDescription.trim(),
+        ownerId: user.id,
+      }) as any;
 
       if (response?.success) {
         toast.success("Community created successfully!");
         setIsModalOpen(false);
         setCommunityTitle("");
         setCommunityDescription("");
-        // Refresh communities list
-        await callFeaturedCommunities();
         // Navigate to the new community
         if (response.data?.id) {
-          navigate(`/CommunityDashboard/${response.data.id}`);
+          navigate(`/community/${response.data.id}`);
         }
       } else {
         toast.error(response?.error || "Failed to create community!");
       }
     } catch (error) {
       toast.error("Error creating community!");
-    } finally {
-      setIsCreating(false);
     }
   };
 
@@ -170,23 +171,23 @@ function Communities() {
                   placeholder="Community Title (required)"
                   value={communityTitle}
                   onChange={(e) => setCommunityTitle(e.target.value)}
-                  disabled={isCreating}
+                  disabled={createCommunityMutation.isPending}
                 />
 
                 <Textarea
                   placeholder="Community Description (required)"
                   value={communityDescription}
                   onChange={(e) => setCommunityDescription(e.target.value)}
-                  disabled={isCreating}
+                  disabled={createCommunityMutation.isPending}
                   className="min-h-[100px]"
                 />
 
                 <Button
                   className="w-full bg-primary hover:bg-primary/90"
                   onClick={handleCreateCommunity}
-                  disabled={isCreating}
+                  disabled={createCommunityMutation.isPending}
                 >
-                  {isCreating ? "Creating..." : "Create Community"}
+                  {createCommunityMutation.isPending ? "Creating..." : "Create Community"}
                 </Button>
               </div>
             </DialogContent>

@@ -133,20 +133,35 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
 
     try {
       // Pass parentId to createComment - this makes it a nested reply
-      const newComment = await createComment(postId, user.id, text.trim(), parentId);
+      const response = await createComment(postId, user.id, text.trim(), parentId);
+      
+      // Unwrap the response data
+      const newCommentData = response?.data || response;
+      
+      // Ensure newComment has all required fields
+      const newComment: Comment = {
+        id: newCommentData?.id || `temp-${Date.now()}`,
+        postId: newCommentData?.postId || postId,
+        userId: newCommentData?.userId || user.id,
+        username: newCommentData?.username || user.username || "Unknown User",
+        content: newCommentData?.content || text.trim(),
+        createdAt: newCommentData?.createdAt || new Date().toISOString(),
+        parentCommentId: newCommentData?.parentCommentId || parentId || "",
+        voteCount: newCommentData?.voteCount || 0,
+      };
       
       if (parentId) {
         // This is a reply to a comment - add it to the replies for that parent comment
         setReplies((prev) => ({
           ...prev,
-          [parentId]: [...(prev[parentId] || []), newComment as Comment],
+          [parentId]: [...(prev[parentId] || []), newComment],
         }));
         toast.success("Reply posted successfully!");
       } else {
         // This is a top-level comment - add it directly to the post's comments
         setComments((prev) => ({
           ...prev,
-          [postId]: [...(prev[postId] || []), newComment as Comment],
+          [postId]: [...(prev[postId] || []), newComment],
         }));
         toast.success("Comment posted successfully!");
       }
@@ -163,8 +178,20 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
     if (!newPostTitle.trim() || !newPostContent.trim() || !user) return;
     setPosting(true);
     try {
-      const createdPost = await createPost(communityId, user.id, newPostTitle.trim(), newPostContent.trim());
-      const newPost = createdPost as Post;
+      const response = await createPost(communityId, user.id, newPostTitle.trim(), newPostContent.trim());
+      const postData = response?.data || response;
+      
+      // Ensure newPost has all required fields
+      const newPost: Post = {
+        id: postData?.id || `temp-${Date.now()}`,
+        title: postData?.title || newPostTitle.trim(),
+        content: postData?.content || newPostContent.trim(),
+        authorId: postData?.authorId || user.id,
+        authorName: postData?.authorName || user.username || "Unknown User",
+        communityId: postData?.communityId || communityId,
+        createdAt: postData?.createdAt ? new Date(postData.createdAt) : new Date(),
+      };
+      
       setPosts((prev) => [newPost, ...prev]);
       setAllPosts((prev) => [newPost, ...prev]);
       setNewPostTitle("");
@@ -356,17 +383,31 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
   };
 
   const getTimeAgo = (date: Date | string): string => {
-    const now = new Date();
-    const createdDate = new Date(date);
-    const seconds = Math.floor((now.getTime() - createdDate.getTime()) / 1000);
+    try {
+      const now = new Date();
+      const createdDate = new Date(date);
+      
+      // Check if the date is valid
+      if (isNaN(createdDate.getTime())) {
+        return "just now";
+      }
+      
+      const seconds = Math.floor((now.getTime() - createdDate.getTime()) / 1000);
+      
+      // Handle future dates
+      if (seconds < 0) return "just now";
 
-    if (seconds < 60) return "just now";
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-    if (seconds < 2592000) return `${Math.floor(seconds / 604800)}w ago`;
-    if (seconds < 31536000) return `${Math.floor(seconds / 2592000)}mo ago`;
-    return `${Math.floor(seconds / 31536000)}y ago`;
+      if (seconds < 60) return "just now";
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+      if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+      if (seconds < 2592000) return `${Math.floor(seconds / 604800)}w ago`;
+      if (seconds < 31536000) return `${Math.floor(seconds / 2592000)}mo ago`;
+      return `${Math.floor(seconds / 31536000)}y ago`;
+    } catch (err) {
+      console.error("Error formatting time:", err);
+      return "just now";
+    }
   };
 
   const handleSearch = async (query: string) => {

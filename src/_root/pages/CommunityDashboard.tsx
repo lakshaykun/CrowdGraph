@@ -4,22 +4,21 @@ import { CommunityFeed } from "@/components/shared/CommunityFeed";
 import { ContributionQueueSection, ContributionQueueModal } from "@/components/shared/ContributionQueue";
 import { toast } from "sonner";
 import {
-  getUserById,
-  getUsersInCommunity,
-  searchCommunityById,
-  joinCommunity,
-  leaveCommunity,
-  getGraphProposalsInCommunity,
-  voteNodeProposal,
-  voteEdgeProposal,
-  getGraphInCommunity,
-  createNodeProposal,
-  createEdgeProposal,
-  updateCommunity,
-  deleteCommunity,
-  queryKnowledgeGraph,
-} from "@/services/api";
-import { useApi } from "@/hooks/apiHook";
+  useGetCommunityById,
+  useGetUsersInCommunity,
+  useGetUserById,
+  useJoinCommunity,
+  useLeaveCommunity,
+  useGetGraphProposalsInCommunity,
+  useVoteNodeProposal,
+  useVoteEdgeProposal,
+  useGetGraphInCommunity,
+  useCreateNodeProposal,
+  useCreateEdgeProposal,
+  useUpdateCommunity,
+  useDeleteCommunity,
+  useQueryKnowledgeGraph,
+} from "@/hooks/useQueries";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import type {
@@ -109,38 +108,54 @@ function CommunityDashboard() {
   }, [user, navigate]);
 
   const { communityId } = useParams<{ communityId: string }>();
-  const {
-    data: communityData,
-    loading: communityLoading,
+  
+  // React Query hooks for data fetching
+  const { 
+    data: communityData = {} as any, 
+    isLoading: communityLoading, 
     error: communityError,
-    callApi: callCommunityApi,
-  } = useApi(searchCommunityById);
-  const {
-    data: communityMembers,
-    loading: membersLoading,
-    callApi: callMembersApi,
-  } = useApi(getUsersInCommunity);
-  const {
-    data: ownerData,
-    loading: ownerLoading,
-    callApi: callOwnerApi,
-  } = useApi(getUserById);
-  const { loading: joinLoading, callApi: callJoinApi } = useApi(joinCommunity);
-  const { loading: leaveLoading, callApi: callLeaveApi } =
-    useApi(leaveCommunity);
-  const {
-    data: proposalsResponse,
-    loading: proposalsLoading,
-    callApi: callProposalsApi,
-  } = useApi(getGraphProposalsInCommunity);
-  const { callApi: callVoteNodeApi } = useApi(voteNodeProposal);
-  const { callApi: callVoteEdgeApi } = useApi(voteEdgeProposal);
-  const {
-    data: graphData,
-    callApi: callGraphApi,
-  } = useApi(getGraphInCommunity);
+    refetch: refetchCommunity 
+  } = useGetCommunityById(communityId || "");
+
+  const { 
+    data: communityMembers = [] as any, 
+    isLoading: membersLoading,
+    refetch: refetchMembers
+  } = useGetUsersInCommunity(communityId || "");
+
+  const { 
+    data: ownerData = {} as any, 
+    isLoading: ownerLoading 
+  } = useGetUserById(communityData?.ownerId || "");
+
+  const { 
+    data: proposalsResponse = {} as any, 
+    isLoading: proposalsLoading,
+    refetch: refetchProposals
+  } = useGetGraphProposalsInCommunity(communityId || "");
+
+  const { 
+    data: graphData = { nodes: [], edges: [] } as any,
+    refetch: refetchGraph
+  } = useGetGraphInCommunity(communityId || "");
+
+  // Mutations
+  const joinMutation = useJoinCommunity();
+  const leaveMutation = useLeaveCommunity();
+  const createNodeMutation = useCreateNodeProposal();
+  const createEdgeMutation = useCreateEdgeProposal();
+  const voteNodeMutation = useVoteNodeProposal();
+  const voteEdgeMutation = useVoteEdgeProposal();
+  const updateCommunityMutation = useUpdateCommunity();
+  const deleteCommunityMutation = useDeleteCommunity();
 
   const proposalsData = proposalsResponse as GraphProposals | null;
+  
+  // Extract loading states from mutations
+  const joinLoading = joinMutation.isPending;
+  const leaveLoading = leaveMutation.isPending;
+  const isUpdatingCommunity = updateCommunityMutation.isPending;
+  const isDeletingCommunity = deleteCommunityMutation.isPending;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
@@ -152,49 +167,45 @@ function CommunityDashboard() {
   const [isOwnerSettingsModalOpen, setIsOwnerSettingsModalOpen] = useState(false);
   const [ownerSettingsTitle, setOwnerSettingsTitle] = useState<string>("");
   const [ownerSettingsDescription, setOwnerSettingsDescription] = useState<string>("");
-  const [isUpdatingCommunity, setIsUpdatingCommunity] = useState(false);
-  const [isDeletingCommunity, setIsDeletingCommunity] = useState(false);
 
   // Search state
   const [searchActive, setSearchActive] = useState(false);
   const [searchAnswer, setSearchAnswer] = useState<string>("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchGraphData, setSearchGraphData] = useState<{ nodes: Node[]; edges: Edge[] }>({ nodes: [], edges: [] });
-  const { callApi: callQueryApi } = useApi<any>(queryKnowledgeGraph);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // React Query hook for knowledge graph query
+  const { data: queryResult } = useQueryKnowledgeGraph(
+    communityId || "",
+    searchQuery,
+    { enabled: searchQuery.length > 0 }
+  );
 
   // Handle search query
   const handleSearch = async (query: string) => {
     if (!query.trim() || !communityId) {
       setSearchActive(false);
-      setSearchLoading(false);
+      setSearchQuery("");
       return;
     }
 
-    setSearchLoading(true);
+    setSearchQuery(query);
     setSearchActive(true);
     setSearchAnswer("");
-
-    try {
-      const response = await callQueryApi(communityId, query);
-      
-      if (response?.success && response.data) {
-        setSearchAnswer(response.data.answer || "");
-        setSearchGraphData({
-          nodes: response.data.nodes || [],
-          edges: response.data.edges || [],
-        });
-        toast.success("Search completed!");
-      } else {
-        toast.error(response?.error || "Search failed");
-        setSearchActive(false);
-      }
-    } catch (error) {
-      toast.error("Error performing search");
-      setSearchActive(false);
-    } finally {
-      setSearchLoading(false);
-    }
   };
+
+  // Update search results when query result changes
+  useEffect(() => {
+    if ((queryResult as any)?.success && (queryResult as any)?.data) {
+      setSearchAnswer((queryResult as any).data.answer || "");
+      setSearchGraphData({
+        nodes: (queryResult as any).data.nodes || [],
+        edges: (queryResult as any).data.edges || [],
+      });
+      toast.success("Search completed!");
+    }
+  }, [queryResult]);
 
   // Clear search
   const handleClearSearch = () => {
@@ -230,17 +241,14 @@ function CommunityDashboard() {
     }
 
     try {
-      let response;
       if (proposalType === 'node') {
-        response = await callVoteNodeApi(proposalId, voteValue, user.id);
+        await voteNodeMutation.mutateAsync({ proposalId, vote: voteValue, userId: user.id });
       } else {
-        response = await callVoteEdgeApi(proposalId, voteValue, user.id);
+        await voteEdgeMutation.mutateAsync({ proposalId, vote: voteValue, userId: user.id });
       }
       
       // Show success toast based on response
-      if (!response.success) {
-        toast.error(response.error || "Failed to vote. Please try again.");
-      } else if (voteValue === 1) {
+      if (voteValue === 1) {
         toast.success("Upvoted!");
       } else if (voteValue === -1) {
         toast.success("Downvoted!");
@@ -248,9 +256,9 @@ function CommunityDashboard() {
         toast.success("Vote cleared!");
       }
     
-      // Refresh proposals after voting
+      // Refetch proposals after voting
       if (communityId) {
-        await callProposalsApi(communityId);
+        refetchProposals();
       }
     } catch (error) {
       toast.error("Failed to vote. Please try again.");
@@ -261,9 +269,8 @@ function CommunityDashboard() {
   const handleJoinCommunity = async () => {
     if (!user || !communityId) return;
     try {
-      await callJoinApi(communityId, user.id);
-      // Refresh community members list
-      await callMembersApi(communityId);
+      await joinMutation.mutateAsync({ communityId, userId: user.id });
+      // Cache invalidation happens automatically through mutation's onSuccess
       toast.success("Successfully joined community!");
     } catch (error) {
       toast.error("Failed to join community. Please try again.");
@@ -273,9 +280,8 @@ function CommunityDashboard() {
   const handleLeaveCommunity = async () => {
     if (!user || !communityId) return;
     try {
-      await callLeaveApi(communityId, user.id);
-      // Refresh community members list
-      await callMembersApi(communityId);
+      await leaveMutation.mutateAsync({ communityId, userId: user.id });
+      // Cache invalidation happens automatically through mutation's onSuccess
       toast.success("Successfully left community!");
     } catch (error) {
       toast.error("Failed to leave community. Please try again.");
@@ -296,24 +302,15 @@ function CommunityDashboard() {
       return;
     }
 
-    setIsUpdatingCommunity(true);
     try {
-      const response = await updateCommunity(
+      await updateCommunityMutation.mutateAsync({
         communityId,
-        ownerSettingsTitle.trim(),
-        ownerSettingsDescription.trim()
-      );
-
-      if (response?.success) {
-        toast.success("Community updated successfully!");
-        await callCommunityApi(communityId);
-      } else {
-        toast.error(response?.error || "Failed to update community!");
-      }
+        title: ownerSettingsTitle.trim(),
+        description: ownerSettingsDescription.trim(),
+      });
+      toast.success("Community updated successfully!");
     } catch (error) {
       toast.error("Error updating community!");
-    } finally {
-      setIsUpdatingCommunity(false);
     }
   };
 
@@ -325,21 +322,13 @@ function CommunityDashboard() {
       return;
     }
 
-    setIsDeletingCommunity(true);
     try {
-      const response = await deleteCommunity(communityId);
-
-      if (response?.success) {
-        toast.success("Community deleted successfully!");
-        setIsOwnerSettingsModalOpen(false);
-        navigate("/Communities");
-      } else {
-        toast.error(response?.error || "Failed to delete community!");
-      }
+      await deleteCommunityMutation.mutateAsync(communityId);
+      toast.success("Community deleted successfully!");
+      setIsOwnerSettingsModalOpen(false);
+      navigate("/Communities");
     } catch (error) {
       toast.error("Error deleting community!");
-    } finally {
-      setIsDeletingCommunity(false);
     }
   };
 
@@ -431,28 +420,20 @@ function CommunityDashboard() {
 
     try {
       // Create node proposal with CREATE type
-      const response = await createNodeProposal(
-        communityId!,
-        user?.id!,
-        nodeName.trim(),
-        nodeLabels.filter((l) => l.trim()),
-        formattedProps,
-        "CREATE"
-      );
+      await createNodeMutation.mutateAsync({
+        communityId: communityId!,
+        userId: user?.id!,
+        name: nodeName.trim(),
+        labels: nodeLabels.filter((l) => l.trim()),
+        properties: formattedProps,
+        proposalType: "CREATE",
+      });
 
-      if (response?.success) {
-        toast.success("Node proposal created successfully!");
-        setIsModalOpen(false);
-        setNodeLabels([]);
-        setNodeName("");
-        setNodeProperties([{ key: "", value: "" }]);
-        // Refresh proposals
-        if (communityId) {
-          callProposalsApi(communityId);
-        }
-      } else {
-        toast.error(response?.error || "Failed to create node proposal!");
-      }
+      toast.success("Node proposal created successfully!");
+      setIsModalOpen(false);
+      setNodeLabels([]);
+      setNodeName("");
+      setNodeProperties([{ key: "", value: "" }]);
     } catch (err) {
       toast.error("Error creating node proposal!");
     }
@@ -488,28 +469,20 @@ function CommunityDashboard() {
 
     try {
       // Create edge proposal with CREATE type
-      const response = await createEdgeProposal(
-        communityId!,
-        user?.id!,
-        edgeData.sourceId,
-        edgeData.targetId,
-        edgeData.type,
-        formattedProps,
-        "CREATE"
-      );
+      await createEdgeMutation.mutateAsync({
+        communityId: communityId!,
+        userId: user?.id!,
+        sourceId: edgeData.sourceId,
+        targetId: edgeData.targetId,
+        type: edgeData.type,
+        properties: formattedProps,
+        proposalType: "CREATE",
+      });
 
-      if (response?.success) {
-        toast.success("Edge proposal created successfully!");
-        setIsModalOpen(false);
-        setEdgeData({});
-        setEdgeProperties([{ key: "", value: "" }]);
-        // Refresh proposals
-        if (communityId) {
-          callProposalsApi(communityId);
-        }
-      } else {
-        toast.error(response?.error || "Failed to create edge proposal!");
-      }
+      toast.success("Edge proposal created successfully!");
+      setIsModalOpen(false);
+      setEdgeData({});
+      setEdgeProperties([{ key: "", value: "" }]);
     } catch (err) {
       toast.error("Error creating edge proposal!");
     }
@@ -519,38 +492,28 @@ function CommunityDashboard() {
   const handleGraphUpdate = async (type: 'node' | 'edge', data: any) => {
     try {
       if (type === 'node') {
-        const response = await createNodeProposal(
-          communityId!,
-          user?.id!,
-          data.label,
-          data.labels || [],
-          data.details?.reduce((acc: any, d: any) => ({ ...acc, [d.key]: d.value }), {}) || {},
-          "UPDATE",
-          data.id
-        );
-        if (response?.success) {
-          toast.success("Node update proposal created!");
-          if (communityId) callProposalsApi(communityId);
-        } else {
-          toast.error(response?.error || "Failed to create update proposal");
-        }
+        await createNodeMutation.mutateAsync({
+          communityId: communityId!,
+          userId: user?.id!,
+          name: data.label,
+          labels: data.labels || [],
+          properties: data.details?.reduce((acc: any, d: any) => ({ ...acc, [d.key]: d.value }), {}) || {},
+          proposalType: "UPDATE",
+          nodeId: data.id,
+        });
+        toast.success("Node update proposal created!");
       } else {
-        const response = await createEdgeProposal(
-          communityId!,
-          user?.id!,
-          data.source?.id || data.sourceId,
-          data.target?.id || data.targetId,
-          data.label,
-          data.details?.reduce((acc: any, d: any) => ({ ...acc, [d.key]: d.value }), {}) || {},
-          "UPDATE",
-          data.id
-        );
-        if (response?.success) {
-          toast.success("Edge update proposal created!");
-          if (communityId) callProposalsApi(communityId);
-        } else {
-          toast.error(response?.error || "Failed to create update proposal");
-        }
+        await createEdgeMutation.mutateAsync({
+          communityId: communityId!,
+          userId: user?.id!,
+          sourceId: data.source?.id || data.sourceId,
+          targetId: data.target?.id || data.targetId,
+          type: data.label,
+          properties: data.details?.reduce((acc: any, d: any) => ({ ...acc, [d.key]: d.value }), {}) || {},
+          proposalType: "UPDATE",
+          edgeId: data.id,
+        });
+        toast.success("Edge update proposal created!");
       }
     } catch (err) {
       toast.error("Error creating update proposal");
@@ -573,38 +536,28 @@ function CommunityDashboard() {
   const handleGraphDelete = async (type: 'node' | 'edge', nodeOrEdgeData: any) => {
     try {
       if (type === 'node') {
-        const response = await createNodeProposal(
-          communityId!,
-          user?.id!,
-          nodeOrEdgeData.label || "",
-          nodeOrEdgeData.labels || [],
-          nodeOrEdgeData.details?.reduce((acc: any, d: any) => ({ ...acc, [d.key]: d.value }), {}) || {},
-          "DELETE",
-          nodeOrEdgeData.id
-        );
-        if (response?.success) {
-          toast.success("Node delete proposal created!");
-          if (communityId) callProposalsApi(communityId);
-        } else {
-          toast.error(response?.error || "Failed to create delete proposal");
-        }
+        await createNodeMutation.mutateAsync({
+          communityId: communityId!,
+          userId: user?.id!,
+          name: nodeOrEdgeData.label || "",
+          labels: nodeOrEdgeData.labels || [],
+          properties: nodeOrEdgeData.details?.reduce((acc: any, d: any) => ({ ...acc, [d.key]: d.value }), {}) || {},
+          proposalType: "DELETE",
+          nodeId: nodeOrEdgeData.id,
+        });
+        toast.success("Node delete proposal created!");
       } else {
-        const response = await createEdgeProposal(
-          communityId!,
-          user?.id!,
-          nodeOrEdgeData.source?.id || nodeOrEdgeData.sourceId || "",
-          nodeOrEdgeData.target?.id || nodeOrEdgeData.targetId || "",
-          nodeOrEdgeData.label || "",
-          nodeOrEdgeData.details?.reduce((acc: any, d: any) => ({ ...acc, [d.key]: d.value }), {}) || {},
-          "DELETE",
-          nodeOrEdgeData.id
-        );
-        if (response?.success) {
-          toast.success("Edge delete proposal created!");
-          if (communityId) callProposalsApi(communityId);
-        } else {
-          toast.error(response?.error || "Failed to create delete proposal");
-        }
+        await createEdgeMutation.mutateAsync({
+          communityId: communityId!,
+          userId: user?.id!,
+          sourceId: nodeOrEdgeData.source?.id || nodeOrEdgeData.sourceId || "",
+          targetId: nodeOrEdgeData.target?.id || nodeOrEdgeData.targetId || "",
+          type: nodeOrEdgeData.label || "",
+          properties: nodeOrEdgeData.details?.reduce((acc: any, d: any) => ({ ...acc, [d.key]: d.value }), {}) || {},
+          proposalType: "DELETE",
+          edgeId: nodeOrEdgeData.id,
+        });
+        toast.success("Edge delete proposal created!");
       }
     } catch (err) {
       toast.error("Error creating delete proposal");
@@ -614,18 +567,17 @@ function CommunityDashboard() {
   // --- API calls ---
   useEffect(() => {
     if (communityId) {
-      callCommunityApi(communityId);
-      callProposalsApi(communityId);
-      callGraphApi(communityId);
+      refetchCommunity();
+      refetchProposals();
+      refetchGraph();
     }
-  }, [communityId]);
+  }, [communityId, refetchCommunity, refetchProposals, refetchGraph]);
 
   useEffect(() => {
     if (communityData?.ownerId && communityId) {
-      callMembersApi(communityId);
-      callOwnerApi(communityData.ownerId);
+      refetchMembers();
     }
-  }, [communityData?.ownerId, communityId]);
+  }, [communityData?.ownerId, communityId, refetchMembers]);
 
   // --- Loading states ---
   if (communityLoading)
@@ -643,8 +595,7 @@ function CommunityDashboard() {
             Community not found
           </h2>
           <p className="text-muted-foreground mb-4">
-            {communityError ||
-              "This community doesn't exist or has been removed."}
+            {communityError instanceof Error ? communityError.message : "This community doesn't exist or has been removed."}
           </p>
           <button
             onClick={() => navigate("/Communities")}
