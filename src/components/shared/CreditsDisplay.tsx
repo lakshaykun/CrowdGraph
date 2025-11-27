@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 interface CreditsDisplayProps {
   credits?: number;
@@ -11,9 +11,11 @@ const CreditsDisplay: React.FC<CreditsDisplayProps> = ({
   isLoading = false,
   error = null,
 }) => {
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
+
   return (
     <div className="px-2 sm:px-4 py-2">
-      <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-linear-to-r from-primary/10 to-primary/5 border border-primary/20 shadow-sm hover:shadow-md transition-shadow">
         {/* Left: Credits Label and Icon */}
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20">
@@ -58,20 +60,30 @@ const CreditsDisplay: React.FC<CreditsDisplayProps> = ({
 
         {/* Right: Info Icon with Tooltip */}
         <div className="relative group cursor-help">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            className="text-muted-foreground hover:text-primary transition-colors"
-            fill="currentColor"
-            viewBox="0 0 256 256"
+          <button
+            onClick={() => setIsTooltipOpen(!isTooltipOpen)}
+            onMouseLeave={() => setIsTooltipOpen(false)}
+            className="p-1 rounded hover:bg-primary/10 transition-colors"
+            aria-label="Credits info"
+            type="button"
           >
-            <path d="M128,20A108,108,0,1,0,236,128,108.12,108.12,0,0,0,128,20Zm0,192a84,84,0,1,1,84-84A84.09,84.09,0,0,1,128,212Zm-8-80h16a8,8,0,0,1,0,16h-16a8,8,0,0,1,0-16Zm20-56a20,20,0,1,1-20-20A20,20,0,0,1,140,76Z"></path>
-          </svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              className="text-muted-foreground hover:text-primary transition-colors"
+              fill="currentColor"
+              viewBox="0 0 256 256"
+            >
+              <path d="M128,20A108,108,0,1,0,236,128,108.12,108.12,0,0,0,128,20Zm0,192a84,84,0,1,1,84-84A84.09,84.09,0,0,1,128,212Zm-8-80h16a8,8,0,0,1,0,16h-16a8,8,0,0,1,0-16Zm20-56a20,20,0,1,1-20-20A20,20,0,0,1,140,76Z"></path>
+            </svg>
+          </button>
           {/* Tooltip */}
-          <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-card border border-border rounded-lg shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 text-sm text-foreground">
+          <div className={`absolute bottom-full right-0 mb-2 w-48 p-3 bg-card border border-border rounded-lg shadow-lg z-50 text-sm text-foreground pointer-events-auto transition-opacity ${
+            isTooltipOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          } group-hover:opacity-100 group-hover:pointer-events-auto`}>
             <p className="text-xs text-muted-foreground">
-              Credits are earned through contributions and voting in this community. Use them to propose and vote on knowledge graph improvements.
+              Credits are earned through contributions and voting in this community and updated every week. Use them to propose and vote on knowledge graph improvements.
             </p>
           </div>
         </div>

@@ -22,6 +22,7 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
   const [selectedResult, setSelectedResult] = useState<any>(null);
   const [searchType, setSearchType] = useState<'all' | 'nodes' | 'edges'>('all');
   const [modalState, setModalState] = useState<{ type: 'node' | 'edge'; action: 'update' | 'delete'; data: any } | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { theme } = useTheme();
 
   // Responsive sizing: adapt based on container size
@@ -203,6 +204,11 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
   ) => {
     const info = infoRef.current;
     if (!info) return;
+
+    // Close search bar on mobile when showing info
+    if (isSmall) {
+      setIsSearchOpen(false);
+    }
 
     // Format the type/labels section
     let typeLabelsHtml = '';
@@ -564,152 +570,230 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
           position: "absolute",
           top: isSmall ? 8 : 16,
           left: isSmall ? 8 : 16,
-          background: `${theme.colors.cardBg}f0`,
-          backdropFilter: "blur(10px)",
-          border: `1px solid ${theme.colors.border}`,
+          background: isSmall && !isSearchOpen ? "transparent" : `${theme.colors.cardBg}f0`,
+          backdropFilter: isSmall && !isSearchOpen ? "none" : "blur(10px)",
+          border: isSmall && !isSearchOpen ? "none" : `1px solid ${theme.colors.border}`,
           borderRadius: "12px",
-          padding: isSmall ? "8px" : "12px",
+          padding: isSmall ? (isSearchOpen ? "10px" : "0") : "12px",
           zIndex: 50,
-          width: isSmall ? "calc(100% - 16px)" : "320px",
+          width: isSmall ? (isSearchOpen ? "calc(100% - 16px)" : "44px") : "320px",
           maxWidth: isSmall ? "calc(100% - 16px)" : "400px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          boxShadow: isSmall && !isSearchOpen ? "none" : "0 4px 12px rgba(0,0,0,0.15)",
+          transition: isSmall ? "all 0.3s ease" : "none",
         }}
       >
-        {/* Search Input */}
-        <div style={{ marginBottom: isSmall ? "6px" : "8px" }}>
-          <input
-            type="text"
-            placeholder="Search nodes & edges..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+        {/* Search Icon Button (Mobile Only) */}
+        {isSmall && !isSearchOpen && (
+          <button
+            onClick={() => {
+              setIsSearchOpen(true);
+              closeInfo();
+            }}
             style={{
-              width: "100%",
-              padding: isSmall ? "6px 8px" : "8px 12px",
-              fontSize: isSmall ? "0.75rem" : "0.875rem",
+              width: "44px",
+              height: "44px",
+              padding: "0",
               border: `1px solid ${theme.colors.border}`,
-              borderRadius: "8px",
-              background: theme.colors.background,
+              borderRadius: "12px",
+              background: `${theme.colors.cardBg}f0`,
               color: theme.colors.text,
-              outline: "none",
-              transition: "border-color 0.2s ease",
-              boxSizing: "border-box",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s ease",
             }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = theme.colors.primary;
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${theme.colors.primary}40`;
             }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = theme.colors.border;
-            }}
-          />
-        </div>
-
-        {/* Filter Tabs */}
-        <div style={{ display: "flex", gap: "4px", marginBottom: searchResults.length > 0 ? (isSmall ? "6px" : "8px") : "0" }}>
-          {(['all', 'nodes', 'edges'] as const).map((filter) => (
-            <button
-              key={filter}
-              onClick={() => {
-                setSearchType(filter);
-                setSelectedResult(null);
-              }}
-              style={{
-                flex: 1,
-                padding: isSmall ? "4px 6px" : "6px 8px",
-                fontSize: isSmall ? "0.65rem" : "0.75rem",
-                fontWeight: searchType === filter ? "600" : "500",
-                border: "none",
-                borderRadius: "6px",
-                background: searchType === filter ? theme.colors.primary : theme.colors.background,
-                color: searchType === filter ? theme.colors.background : theme.colors.text,
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-                textTransform: "capitalize",
-              }}
-              onMouseEnter={(e) => {
-                if (searchType !== filter) {
-                  e.currentTarget.style.background = `${theme.colors.primary}40`;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (searchType !== filter) {
-                  e.currentTarget.style.background = theme.colors.background;
-                }
-              }}
-            >
-              {filter === 'all' ? 'All' : filter === 'nodes' ? 'Nodes' : 'Edges'}
-            </button>
-          ))}
-        </div>
-
-        {/* Search Results Dropdown */}
-        {searchResults.length > 0 && (
-          <div
-            style={{
-              maxHeight: isSmall ? "120px" : "180px",
-              overflowY: "auto",
-              borderTop: `1px solid ${theme.colors.border}`,
-              paddingTop: isSmall ? "6px" : "8px",
-              marginTop: isSmall ? "6px" : "8px",
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = `${theme.colors.cardBg}f0`;
             }}
           >
-            {searchResults.slice(0, isSmall ? 3 : 5).map((result, index) => (
-              <button
-                key={`${result.type}-${result.id}`}
-                onClick={() => navigateToResult(result)}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  padding: isSmall ? "6px 8px" : "8px 10px",
-                  marginBottom: index < searchResults.length - 1 ? (isSmall ? "3px" : "4px") : "0",
-                  fontSize: isSmall ? "0.7rem" : "0.8rem",
-                  textAlign: "left",
-                  border: `1px solid ${selectedResult?.id === result.id ? theme.colors.primary : theme.colors.border}`,
-                  borderRadius: "6px",
-                  background: selectedResult?.id === result.id ? `${theme.colors.primary}15` : theme.colors.background,
-                  color: theme.colors.text,
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = `${theme.colors.primary}25`;
-                  e.currentTarget.style.borderColor = theme.colors.primary;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = selectedResult?.id === result.id ? `${theme.colors.primary}15` : theme.colors.background;
-                  e.currentTarget.style.borderColor = selectedResult?.id === result.id ? theme.colors.primary : theme.colors.border;
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  <span style={{ fontSize: isSmall ? "0.65rem" : "0.75rem", fontWeight: "600", color: theme.colors.primary }}>
-                    {result.type === 'node' ? '●' : '→'}
-                  </span>
-                  <span style={{ fontWeight: "500", flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {result.label}
-                  </span>
-                  {result.matchType === 'id' && (
-                    <span style={{ fontSize: isSmall ? "0.6rem" : "0.7rem", color: theme.colors.textSecondary }}>
-                      ID
-                    </span>
-                  )}
-                </div>
-              </button>
-            ))}
-            {searchResults.length > (isSmall ? 3 : 5) && (
-              <div style={{ padding: isSmall ? "4px 8px" : "6px 10px", fontSize: isSmall ? "0.65rem" : "0.75rem", color: theme.colors.textSecondary, textAlign: "center" }}>
-                +{searchResults.length - (isSmall ? 3 : 5)} more
-              </div>
-            )}
-          </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+          </button>
         )}
 
-        {/* Empty State */}
-        {searchQuery && searchResults.length === 0 && (
-          <div style={{ padding: isSmall ? "8px" : "12px", fontSize: isSmall ? "0.7rem" : "0.8rem", color: theme.colors.textSecondary, textAlign: "center" }}>
-            No {searchType === 'all' ? 'results' : searchType} found
-          </div>
+        {/* Search Content (Visible when expanded on mobile, always on desktop) */}
+        {(isSearchOpen || !isSmall) && (
+          <>
+            {/* Header with Close Button (Mobile Only) */}
+            {isSmall && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                <span style={{ fontSize: "0.875rem", fontWeight: "600", color: theme.colors.text }}>Search</span>
+                <button
+                  onClick={() => setIsSearchOpen(false)}
+                  style={{
+                    width: "24px",
+                    height: "24px",
+                    padding: "0",
+                    border: "none",
+                    borderRadius: "4px",
+                    background: "transparent",
+                    color: theme.colors.textSecondary,
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = `${theme.colors.primary}20`;
+                    e.currentTarget.style.color = theme.colors.text;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = theme.colors.textSecondary;
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Search Input */}
+            <div style={{ marginBottom: isSmall ? "8px" : "8px" }}>
+              <input
+                type="text"
+                placeholder="Search nodes & edges..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: isSmall ? "8px 10px" : "8px 12px",
+                  fontSize: isSmall ? "0.8125rem" : "0.875rem",
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: "8px",
+                  background: theme.colors.background,
+                  color: theme.colors.text,
+                  outline: "none",
+                  transition: "border-color 0.2s ease",
+                  boxSizing: "border-box",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = theme.colors.primary;
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = theme.colors.border;
+                }}
+                autoFocus={isSmall}
+              />
+            </div>
+
+            {/* Filter Tabs */}
+            <div style={{ display: "flex", gap: "6px", marginBottom: searchResults.length > 0 ? "8px" : "0" }}>
+              {(['all', 'nodes', 'edges'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => {
+                    setSearchType(filter);
+                    setSelectedResult(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: isSmall ? "6px 8px" : "6px 8px",
+                    fontSize: isSmall ? "0.75rem" : "0.75rem",
+                    fontWeight: searchType === filter ? "600" : "500",
+                    border: "none",
+                    borderRadius: "6px",
+                    background: searchType === filter ? theme.colors.primary : theme.colors.background,
+                    color: searchType === filter ? theme.colors.background : theme.colors.text,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    textTransform: "capitalize",
+                    whiteSpace: "nowrap",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (searchType !== filter) {
+                      e.currentTarget.style.background = `${theme.colors.primary}40`;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (searchType !== filter) {
+                      e.currentTarget.style.background = theme.colors.background;
+                    }
+                  }}
+                >
+                  {filter === 'all' ? 'All' : filter === 'nodes' ? 'Nodes' : 'Edges'}
+                </button>
+              ))}
+            </div>
+
+            {/* Search Results Dropdown */}
+            {searchResults.length > 0 && (
+              <div
+                style={{
+                  maxHeight: isSmall ? "150px" : "200px",
+                  overflowY: "auto",
+                  borderTop: `1px solid ${theme.colors.border}`,
+                  paddingTop: "8px",
+                  marginTop: "8px",
+                }}
+              >
+                {searchResults.slice(0, isSmall ? 4 : 5).map((result, index) => (
+                  <button
+                    key={`${result.type}-${result.id}`}
+                    onClick={() => navigateToResult(result)}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      padding: isSmall ? "8px 10px" : "8px 10px",
+                      marginBottom: index < searchResults.length - 1 ? "4px" : "0",
+                      fontSize: isSmall ? "0.8125rem" : "0.8rem",
+                      textAlign: "left",
+                      border: `1px solid ${selectedResult?.id === result.id ? theme.colors.primary : theme.colors.border}`,
+                      borderRadius: "6px",
+                      background: selectedResult?.id === result.id ? `${theme.colors.primary}15` : theme.colors.background,
+                      color: theme.colors.text,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = `${theme.colors.primary}25`;
+                      e.currentTarget.style.borderColor = theme.colors.primary;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = selectedResult?.id === result.id ? `${theme.colors.primary}15` : theme.colors.background;
+                      e.currentTarget.style.borderColor = selectedResult?.id === result.id ? theme.colors.primary : theme.colors.border;
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ fontSize: "0.875rem", fontWeight: "600", color: theme.colors.primary, flexShrink: 0 }}>
+                        {result.type === 'node' ? '●' : '→'}
+                      </span>
+                      <span style={{ fontWeight: "500", flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {result.label}
+                      </span>
+                      {result.matchType === 'id' && (
+                        <span style={{ fontSize: isSmall ? "0.7rem" : "0.7rem", color: theme.colors.textSecondary, whiteSpace: "nowrap", flexShrink: 0 }}>
+                          ID
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+                {searchResults.length > (isSmall ? 4 : 5) && (
+                  <div style={{ padding: "6px 10px", fontSize: isSmall ? "0.75rem" : "0.75rem", color: theme.colors.textSecondary, textAlign: "center" }}>
+                    +{searchResults.length - (isSmall ? 4 : 5)} more
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {searchQuery && searchResults.length === 0 && (
+              <div style={{ padding: "10px 8px", fontSize: isSmall ? "0.8125rem" : "0.8rem", color: theme.colors.textSecondary, textAlign: "center" }}>
+                No {searchType === 'all' ? 'results' : searchType} found
+              </div>
+            )}
+          </>
         )}
       </div>
       )}
@@ -727,7 +811,7 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
           left: isSmall ? 12 : 20,
           display: "flex",
           gap: isSmall ? 8 : 12,
-          zIndex: 50,
+          zIndex: 30,
           flexWrap: "wrap",
         }}
       >
@@ -791,7 +875,7 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
             transition: "all 0.2s ease",
             padding: 0,
             minWidth: buttonSize,
-            zIndex: 50,
+            zIndex: 30,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background =

@@ -420,25 +420,26 @@ export function ContributionQueueModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-3 overflow-hidden flex-1">
-            {/* Compact Filter Bar with Dropdowns */}
-            <div className="bg-muted/40 rounded-lg p-3 border border-border/50">
-              <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex flex-col gap-4 overflow-hidden flex-1">
+            {/* Filter Bar with Dropdowns */}
+            <div className="bg-linear-to-r from-muted/50 to-muted/20 rounded-xl p-4 border border-border/60 shadow-sm">
+              <div className="flex flex-wrap gap-3 items-center">
                 {/* Status Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline" className="h-8 text-xs font-medium gap-2 px-2.5">
-                      {statusFilter === 'all' ? 'Status' : statusFilter}
+                    <Button size="sm" variant="outline" className="h-9 text-sm font-medium gap-2 px-3 hover:bg-background/80 transition-colors">
+                      <span className="text-muted-foreground">Status:</span>
+                      <span className="font-semibold">{statusFilter === 'all' ? 'All' : statusFilter}</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-40">
-                    <DropdownMenuLabel className="text-xs">Filter by Status</DropdownMenuLabel>
+                  <DropdownMenuContent align="start" className="w-44">
+                    <DropdownMenuLabel className="text-sm font-semibold">Filter by Status</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuRadioGroup value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-                      <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="PENDING">Pending</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="APPROVED">Approved</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="REJECTED">Rejected</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="all" className="text-sm">All Statuses</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="PENDING" className="text-sm">Pending</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="APPROVED" className="text-sm">Approved</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="REJECTED" className="text-sm">Rejected</DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -446,17 +447,18 @@ export function ContributionQueueModal({
                 {/* Type Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline" className="h-8 text-xs font-medium gap-2 px-2.5">
-                      {typeFilter === 'all' ? 'Type' : typeFilter === 'node' ? 'Nodes' : 'Edges'}
+                    <Button size="sm" variant="outline" className="h-9 text-sm font-medium gap-2 px-3 hover:bg-background/80 transition-colors">
+                      <span className="text-muted-foreground">Type:</span>
+                      <span className="font-semibold">{typeFilter === 'all' ? 'All' : typeFilter === 'node' ? 'Nodes' : 'Edges'}</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-40">
-                    <DropdownMenuLabel className="text-xs">Element Type</DropdownMenuLabel>
+                  <DropdownMenuContent align="start" className="w-44">
+                    <DropdownMenuLabel className="text-sm font-semibold">Element Type</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuRadioGroup value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
-                      <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="node">Nodes</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="edge">Edges</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="all" className="text-sm">All Types</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="node" className="text-sm">Nodes</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="edge" className="text-sm">Edges</DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -464,18 +466,19 @@ export function ContributionQueueModal({
                 {/* Proposal Type Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline" className="h-8 text-xs font-medium gap-2 px-2.5">
-                      {proposalTypeFilter === 'all' ? 'Op' : proposalTypeFilter}
+                    <Button size="sm" variant="outline" className="h-9 text-sm font-medium gap-2 px-3 hover:bg-background/80 transition-colors">
+                      <span className="text-muted-foreground">Action:</span>
+                      <span className="font-semibold">{proposalTypeFilter === 'all' ? 'All' : proposalTypeFilter}</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-40">
-                    <DropdownMenuLabel className="text-xs">Proposal Type</DropdownMenuLabel>
+                  <DropdownMenuContent align="start" className="w-44">
+                    <DropdownMenuLabel className="text-sm font-semibold">Proposal Action</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuRadioGroup value={proposalTypeFilter} onValueChange={(v) => setProposalTypeFilter(v as any)}>
-                      <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="CREATE">Create</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="UPDATE">Update</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="DELETE">Delete</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="all" className="text-sm">All Actions</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="CREATE" className="text-sm">Create</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="UPDATE" className="text-sm">Update</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="DELETE" className="text-sm">Delete</DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -483,26 +486,29 @@ export function ContributionQueueModal({
                 {/* Sort Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline" className="h-8 text-xs font-medium gap-2 px-2.5">
-                      {sortBy === 'recent' ? 'Most Recent' : sortBy === 'oldest' ? 'Oldest' : sortBy === 'upvotes' ? 'Most Upvotes' : 'Most Downvotes'}
+                    <Button size="sm" variant="outline" className="h-9 text-sm font-medium gap-2 px-3 hover:bg-background/80 transition-colors">
+                      <span className="text-muted-foreground">Sort:</span>
+                      <span className="font-semibold text-xs">
+                        {sortBy === 'recent' ? 'Recent' : sortBy === 'oldest' ? 'Oldest' : sortBy === 'upvotes' ? '⬆ Votes' : '⬇ Votes'}
+                      </span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-44">
-                    <DropdownMenuLabel className="text-xs">Sort By</DropdownMenuLabel>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuLabel className="text-sm font-semibold">Sort By</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-                      <DropdownMenuRadioItem value="recent">Most Recent</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="oldest">Oldest</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="upvotes">Most Upvotes</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="downvotes">Most Downvotes</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="recent" className="text-sm">Most Recent</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="oldest" className="text-sm">Oldest First</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="upvotes" className="text-sm">Most Upvotes</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="downvotes" className="text-sm">Most Downvotes</DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
                 {/* Results Counter */}
-                <span className="text-[11px] text-muted-foreground font-medium ml-auto">
-                  {filteredProposals.length} proposal{filteredProposals.length !== 1 ? 's' : ''}
-                </span>
+                <div className="text-sm text-muted-foreground font-medium ml-auto px-3 py-1.5 bg-background/50 rounded-lg border border-border/40">
+                  <span className="font-semibold text-foreground">{filteredProposals.length}</span> proposal{filteredProposals.length !== 1 ? 's' : ''}
+                </div>
               </div>
             </div>
 
