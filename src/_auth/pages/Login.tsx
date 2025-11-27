@@ -1,12 +1,19 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { getAllUsers } from "@/services/api";
+import { toast } from "sonner";
 
 
 function Login() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: any) => {
     setFormData({
@@ -18,7 +25,53 @@ function Login() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
 
-    // Navigate to dashboard on successful login
+    if (!formData.username.trim()) {
+      toast.error("Please enter a username");
+      return;
+    }
+
+    if (!formData.password.trim()) {
+      toast.error("Please enter a password");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Call the API to get all users
+      const response = await getAllUsers();
+
+      if (response?.data && Array.isArray(response.data)) {
+        // Search for user with matching username
+        const user = response.data.find(
+          (u: any) => u.username.toLowerCase() === formData.username.toLowerCase()
+        );
+
+        if (user) {
+          // User found - login the user
+          const userData = {
+            id: user.id,
+            username: user.username,
+            createdAt: user.createdAt,
+            reputation: user.reputation || 0,
+          };
+          
+          login(userData);
+          toast.success(`Welcome back, ${formData.username}!`);
+          navigate("/Communities");
+        } else {
+          // User not found
+          toast.error("Username not found. Please check and try again.");
+        }
+      } else {
+        toast.error("Unable to fetch users. Please try again.");
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast.error("An error occurred during login. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -72,9 +125,12 @@ function Login() {
           <div className="flex px-4 py-3">
             <button
               type="submit"
-              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 flex-1 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em]"
+              disabled={isLoading}
+              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 flex-1 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              <span className="truncate">Log In</span>
+              <span className="truncate">
+                {isLoading ? "Logging in..." : "Log In"}
+              </span>
             </button>
           </div>
 
