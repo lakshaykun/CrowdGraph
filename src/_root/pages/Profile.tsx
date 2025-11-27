@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useApi } from "@/hooks/apiHook";
-import { getCommunitiesOfUser, getUserById } from "@/services/api";
+import { getCommunitiesOfUser, getUserById, updateUser, deleteUser } from "@/services/api";
 import type { Community, User } from "@/schema";
 
 function Profile() {
@@ -11,7 +11,7 @@ function Profile() {
   const navigate = useNavigate();
   const { userId } = useParams<{ userId?: string }>();
   
-  const [activeTab, setActiveTab] = useState<"overview" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "settings" | "theme">("overview");
   const { logout } = useAuth();
 
   // Determine if we're viewing another user's profile or our own
@@ -86,6 +86,7 @@ function Profile() {
     ? [
         { key: "overview", label: "Overview" },
         { key: "settings", label: "Settings" },
+        { key: "theme", label: "Theme" },
       ]
     : [{ key: "overview", label: "Overview" }];
 
@@ -151,7 +152,7 @@ function Profile() {
             {tabs.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key as typeof activeTab)}
+                onClick={() => setActiveTab(tab.key as "overview" | "settings" | "theme")}
                 className={`pb-3 pt-4 font-bold text-sm border-b-[3px] transition ${
                   activeTab === tab.key
                     ? "border-b-primary text-foreground"
@@ -175,6 +176,9 @@ function Profile() {
           )}
           {activeTab === "settings" && isOwnProfile && (
             <Settings user={displayUser} />
+          )}
+          {activeTab === "theme" && isOwnProfile && (
+            <ThemeSettings />
           )}
         </div>
       </div>
@@ -266,6 +270,178 @@ const Overview = ({
 };
 
 const Settings = ({ user }: { user: any }) => {
+  const { logout } = useAuth();
+  const [formData, setFormData] = useState({ username: user?.username || "", password: "" });
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!formData.username.trim()) {
+      setSaveMessage({ type: "error", text: "Username cannot be empty" });
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveMessage(null);
+    
+    try {
+      await updateUser(user?.id, formData.username, formData.password);
+      setSaveMessage({ type: "success", text: "Settings saved successfully!" });
+      // Clear password field after successful save
+      setFormData(prev => ({ ...prev, password: "" }));
+    } catch (error) {
+      setSaveMessage({ type: "error", text: "Failed to save settings. Please try again." });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteUser(user?.id);
+      // Logout after successful deletion (logout handles navigation to /login)
+      logout();
+    } catch (error) {
+      setSaveMessage({ type: "error", text: "Failed to delete account. Please try again." });
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="p-4 sm:p-6">
+      <h2 className="text-foreground text-xl sm:text-2xl font-bold pb-3">
+        Account Settings
+      </h2>
+      <p className="text-muted-foreground text-sm pb-4">
+        Manage your account information.
+      </p>
+
+      <div className="space-y-6">
+        {/* Account Settings */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-foreground">Account</h3>
+          <div>
+            <label className="block text-sm font-medium text-foreground">
+              Username
+            </label>
+            <input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground">
+              New Password (leave empty to keep current)
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              placeholder="Enter new password"
+              className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          {/* Save Message */}
+          {saveMessage && (
+            <div className={`p-3 rounded-lg text-sm font-medium ${
+              saveMessage.type === "success"
+                ? "bg-green-500/20 text-green-700 border border-green-500/30"
+                : "bg-destructive/20 text-destructive border border-destructive/30"
+            }`}>
+              {saveMessage.text}
+            </div>
+          )}
+
+          {/* Save Button */}
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-full px-4 py-2.5 bg-primary hover:bg-primary/90 disabled:bg-primary/50 text-white font-medium rounded-lg transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isSaving ? (
+              <>
+                <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"></div>
+                Saving...
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </button>
+        </div>
+
+        {/* Danger Zone - Delete Account */}
+        <div className="space-y-4 pt-4 border-t border-destructive/30">
+          <h3 className="text-lg font-semibold text-destructive">Danger Zone</h3>
+          <p className="text-sm text-muted-foreground">
+            Once you delete your account, there is no going back. Please be certain.
+          </p>
+
+          <button
+            onClick={() => setIsDeleteOpen(true)}
+            className="w-full px-4 py-2.5 bg-destructive hover:bg-destructive/90 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete Account
+          </button>
+
+          {/* Delete Confirmation Dialog */}
+          {isDeleteOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+              <div className="bg-card border border-border rounded-lg shadow-lg max-w-sm w-full">
+                <div className="p-6">
+                  <h3 className="text-lg font-bold text-foreground mb-2">Delete Account?</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    This action cannot be undone. Your account and all associated data will be permanently deleted.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setIsDeleteOpen(false)}
+                      disabled={isDeleting}
+                      className="flex-1 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-lg transition-all disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeleteUser}
+                      disabled={isDeleting}
+                      className="flex-1 px-4 py-2 bg-destructive hover:bg-destructive/90 disabled:bg-destructive/50 text-white font-medium rounded-lg transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"></div>
+                          Deleting...
+                        </>
+                      ) : (
+                        "Delete Permanently"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ThemeSettings = () => {
   const { setTheme, colorFamily, mode } = useTheme();
 
   const colorThemes = [
@@ -302,111 +478,82 @@ const Settings = ({ user }: { user: any }) => {
   return (
     <div className="p-4 sm:p-6">
       <h2 className="text-foreground text-xl sm:text-2xl font-bold pb-3">
-        Settings
+        Theme Settings
       </h2>
       <p className="text-muted-foreground text-sm pb-4">
-        Manage your account settings and preferences.
+        Choose your preferred color theme and appearance mode.
       </p>
 
       <div className="space-y-6">
-        {/* Account Settings */}
+        {/* Color Theme Selection */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Account</h3>
-          <div>
-            <label className="block text-sm font-medium text-foreground">
-              Username
-            </label>
-            <input
-              type="text"
-              defaultValue={user?.username}
-              className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground">
-              Password
-            </label>
-            <input
-              type="password"
-              defaultValue={user?.password}
-              className="mt-1 block w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+          <h3 className="text-lg font-semibold text-foreground">Color Theme</h3>
+          <p className="text-sm text-muted-foreground">
+            Select a color theme that matches your preference. You can also toggle between light and dark mode using the button in the navbar.
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {colorThemes.map((theme) => {
+              const isActive = colorFamily === theme.color;
+
+              return (
+                <button
+                  key={theme.color}
+                  onClick={() => setTheme(`${theme.color}-${mode}`)}
+                  className={`relative p-4 rounded-lg border-2 transition-all ${
+                    isActive
+                      ? "border-primary shadow-lg scale-105 bg-primary/5"
+                      : "border-border hover:border-primary/50 hover:shadow-md"
+                  }`}
+                >
+                  {/* Theme Preview */}
+                  <div className="flex gap-1 mb-3 justify-center">
+                    <div
+                      className="w-6 h-6 rounded-full shadow-sm"
+                      style={{ backgroundColor: theme.primary }}
+                    />
+                    <div
+                      className="w-6 h-6 rounded-full shadow-sm"
+                      style={{ backgroundColor: theme.secondary }}
+                    />
+                    <div
+                      className="w-6 h-6 rounded-full shadow-sm"
+                      style={{ backgroundColor: theme.accent }}
+                    />
+                  </div>
+
+                  {/* Theme Icon & Name */}
+                  <div className="flex flex-col items-center gap-1">
+                    <p className="text-sm font-semibold text-foreground">
+                      {theme.label}
+                    </p>
+                  </div>
+
+                  {/* Active Indicator */}
+                  {isActive && (
+                    <div className="absolute top-2 right-2">
+                      <svg
+                        className="w-5 h-5 text-primary"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Theme Settings */}
+        {/* Current Mode Display */}
         <div className="space-y-4 pt-4 border-t border-border">
-          <h3 className="text-lg font-semibold text-foreground">Appearance</h3>
-          <p className="text-sm text-muted-foreground">
-            Choose your preferred color theme. You can toggle between light and
-            dark mode using the button in the navbar.
-          </p>
-
-          {/* Color Theme Selection */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-3">
-              Color Theme
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {colorThemes.map((theme) => {
-                const isActive = colorFamily === theme.color;
-
-                return (
-                  <button
-                    key={theme.color}
-                    onClick={() => setTheme(`${theme.color}-${mode}`)}
-                    className={`relative p-4 rounded-lg border-2 transition-all ${
-                      isActive
-                        ? "border-primary shadow-lg scale-105 bg-primary/5"
-                        : "border-border hover:border-primary/50 hover:shadow-md"
-                    }`}
-                  >
-                    {/* Theme Preview */}
-                    <div className="flex gap-1 mb-3 justify-center">
-                      <div
-                        className="w-6 h-6 rounded-full shadow-sm"
-                        style={{ backgroundColor: theme.primary }}
-                      />
-                      <div
-                        className="w-6 h-6 rounded-full shadow-sm"
-                        style={{ backgroundColor: theme.secondary }}
-                      />
-                      <div
-                        className="w-6 h-6 rounded-full shadow-sm"
-                        style={{ backgroundColor: theme.accent }}
-                      />
-                    </div>
-
-                    {/* Theme Icon & Name */}
-                    <div className="flex flex-col items-center gap-1">
-                      <p className="text-sm font-semibold text-foreground">
-                        {theme.label}
-                      </p>
-                    </div>
-
-                    {/* Active Indicator */}
-                    {isActive && (
-                      <div className="absolute top-2 right-2">
-                        <svg
-                          className="w-5 h-5 text-primary"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Current Mode Display */}
+          <h3 className="text-lg font-semibold text-foreground">Display Mode</h3>
           <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
             <span className="text-sm text-muted-foreground">Current mode:</span>
             <span className="text-sm font-semibold text-foreground flex items-center gap-1">
