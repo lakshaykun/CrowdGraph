@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, type ReactNode } from "react";
+import React, { createContext, useState, useContext, useEffect, type ReactNode } from "react";
 import type { User } from "@/schema/index";
 import { useNavigate } from "react-router";
 
@@ -19,8 +19,31 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>({id: '667a383d-a8c8-40f7-a542-6610900ab5d0', username: 'lakshay', createdAt: new Date('2025-11-11T17:26:08.193Z').toLocaleDateString()});
+  // Initialize user from localStorage
+  const [user, setUser] = useState<User | null>(() => {
+    const storedUser = localStorage.getItem('crowdgraph-user');
+    if (storedUser) {
+      try {
+        return JSON.parse(storedUser);
+      } catch (error) {
+        console.error('Failed to parse stored user:', error);
+        return null;
+      }
+    }
+    return null;
+  });
+
   const navigate = useNavigate();
+
+  // Save user to localStorage whenever it changes
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('crowdgraph-user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('crowdgraph-user');
+    }
+  }, [user]);
+
   // Optional helper functions for better usability
   const login = (userData: User) => setUser(userData);
   const logout = () => {
