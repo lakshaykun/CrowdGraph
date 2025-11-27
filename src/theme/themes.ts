@@ -334,6 +334,6 @@ export const themes: Record<string, Theme> = {
 };
 
 export const themeNames = Object.keys(themes);
-export const colorFamilies = ["purple", "blue", "green", "pink"] as const;
+export const colorFamilies = ["purple", "blue", "gray", "pink"] as const;
 export type ColorFamily = (typeof colorFamilies)[number];
 export const defaultTheme = "purple-light";

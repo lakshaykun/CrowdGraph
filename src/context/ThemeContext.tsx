@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, type ReactNode } from "react";
-import { themes, defaultTheme, type Theme, type ColorFamily, colorFamilies } from "@/theme/themes";
+import { themes, defaultTheme, type Theme, type ColorFamily } from "@/theme/themes";
 
 interface ThemeContextType {
   currentTheme: string;
@@ -86,7 +86,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const availableThemes = Object.keys(themes);
 
   return (
-    <ThemeContext.Provider value={{ currentTheme, theme, setTheme, colorFamily: theme.colorFamily, setColorFamily, mode: theme.mode, toggleMode, availableThemes }}>
+    <ThemeContext.Provider value={{ currentTheme, theme, setTheme, colorFamily: theme.colorFamily as ColorFamily, setColorFamily, mode: theme.mode, toggleMode, availableThemes }}>
       {children}
     </ThemeContext.Provider>
   );

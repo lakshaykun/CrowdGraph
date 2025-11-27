@@ -57,9 +57,6 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
   const [newPostContent, setNewPostContent] = useState("");
   const [posting, setPosting] = useState(false);
   const [allPosts, setAllPosts] = useState<Post[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
-  const [loadingReplies, setLoadingReplies] = useState<Record<string, boolean>>({});
   
   // Voting states - tracks user's vote for each comment (1 = upvote, -1 = downvote, 0 = none)
   const [userVotes, setUserVotes] = useState<Record<string, number>>({});
@@ -97,7 +94,6 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
     
     // Only fetch if expanding and we don't already have the comments
     if (willExpand && !comments[postId]) {
-      setLoadingComments((prev) => ({ ...prev, [postId]: true }));
       try {
         const fetchedComments = await getCommentsInPost(postId);
         const commentsList = fetchedComments?.data || fetchedComments || [];
@@ -107,8 +103,6 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
         }));
       } catch (error) {
         console.error("Failed to load comments:", error);
-      } finally {
-        setLoadingComments((prev) => ({ ...prev, [postId]: false }));
       }
     }
   };
@@ -120,7 +114,6 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
     
     // Only fetch if expanding and we don't already have the replies
     if (willExpand && !replies[commentId]) {
-      setLoadingReplies((prev) => ({ ...prev, [commentId]: true }));
       try {
         const fetchedReplies = await getRepliesToComment(commentId);
         const repliesList = fetchedReplies?.data || fetchedReplies || [];
@@ -130,8 +123,6 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
         }));
       } catch (error) {
         console.error("Failed to load replies:", error);
-      } finally {
-        setLoadingReplies((prev) => ({ ...prev, [commentId]: false }));
       }
     }
   };
@@ -379,7 +370,6 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ communityId, isMem
   };
 
   const handleSearch = async (query: string) => {
-    setSearchQuery(query);
     if (!query.trim()) {
       setPosts(allPosts);
       return;

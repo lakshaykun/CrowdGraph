@@ -6,7 +6,7 @@ interface CommunityCardProps extends Community {
     imageUrl: string;
 }
 
-function CommunityCard({ id, title, description, createdAt, imageUrl }: CommunityCardProps) {
+function CommunityCard({ id, title, description, imageUrl }: CommunityCardProps) {
     return (
         <Link to={`/community/${id}`}>
             <div className="flex flex-col gap-2 sm:gap-3 pb-3">

@@ -219,7 +219,7 @@ export const signUpUser = async (username: string, password: string) => {
 };
 
 // sign in user
-export const signInUser = async (username: string, password: string) => {
+export const signInUser = async (username: string, _password: string) => {
   const response = await getUsersByUsername(username);
   return response;
 };

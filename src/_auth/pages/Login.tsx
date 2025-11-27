@@ -1,11 +1,8 @@
-import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 
 function Login() {
-  const navigate = useNavigate();
-  const { login } = useAuth();
   const [formData, setFormData] = useState({
     username: "",
     password: "",

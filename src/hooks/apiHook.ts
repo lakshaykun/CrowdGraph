@@ -176,7 +176,7 @@ export function useApi<T>(
 
               if (onError) {
                 try {
-                  onError(lastError);
+                  onError(lastError || 'Unknown error');
                 } catch (callbackErr) {
                   console.error("Error in onError callback:", callbackErr);
                 }

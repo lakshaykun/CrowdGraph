@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useMemo, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { useTheme } from "@/context/ThemeContext";
-import type { Edge, Node } from "@/schema";
 
 const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; graphData: { nodes: any[]; edges: any[] }; onUpdate?: (type: 'node' | 'edge', data: any) => void; onDelete?: (type: 'node' | 'edge', id: string) => void; onOpenEditModal?: (type: 'node' | 'edge', data: any) => void }> = ({ 
   onExpand, 
@@ -122,8 +121,8 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
 
     if (result.type === 'node') {
       const node = graphData.nodes.find(n => n.id === result.id);
-      if (node) {
-        fgRef.current.centerAt(node.x, node.y, 500);
+      if (node && typeof (node as any).x === 'number' && typeof (node as any).y === 'number') {
+        fgRef.current.centerAt((node as any).x, (node as any).y, 500);
         fgRef.current.zoom(isSmall ? 8 : 12, 500);
         showInfo(node.label, node.group, node.id || "", node.details, 'node', node);
       }
@@ -483,12 +482,6 @@ const KnowledgeGraph: React.FC<{ onExpand?: () => void; isExpanded?: boolean; gr
       fgRef.current.zoom(isSmall ? 12 : 16, 300);
       setIsZoomedIn(true);
     }
-  };
-
-  const handleResetView = () => {
-    if (!fgRef.current) return;
-    setIsZoomedIn(false);
-    fgRef.current.zoomToFit(isSmall ? 300 : 400, isSmall ? -50 : -100);
   };
 
   // Responsive button sizing

@@ -6,7 +6,7 @@ import { useApi } from '@/hooks/apiHook';
 import { getFeaturedCommunities } from '@/services/api';
 
 function landing() {
-  const { data: featuredCommunities, loading: loadingFeatured, callApi: callFeaturedCommunities } = useApi(getFeaturedCommunities);
+  const { data: featuredCommunities, callApi: callFeaturedCommunities } = useApi(getFeaturedCommunities);
   const [communitiesToShow, setCommunitiesToShow] = useState<Community[]>([]);
 
   // Load featured communities on mount
