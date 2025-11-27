@@ -85,6 +85,7 @@ export function useApi<T>(
       while (attempts <= retryCount) {
         try {
           const response = await apiFn(...args);
+          console.log("API Response:", response);
           // Check if component is still mounted
           if (!isMountedRef.current) return { success: false, data: null, error: "Component unmounted" };
 

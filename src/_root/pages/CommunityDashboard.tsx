@@ -49,39 +49,49 @@ function CommunityFeedSection({
   isMember,
   searchActive,
   searchAnswer,
+  searchLoading,
   onClearSearch,
 }: {
   communityId: string;
   isMember: boolean;
   searchActive: boolean;
   searchAnswer?: string;
+  searchLoading?: boolean;
   onClearSearch?: () => void;
 }) {
-  if (searchActive && searchAnswer) {
-    return (
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-foreground text-lg sm:text-xl md:text-[22px] font-bold leading-tight tracking-[-0.015em]">
-            Search Answer
-          </h2>
-          <button
-            onClick={onClearSearch}
-            className="px-3 py-1 text-xs sm:text-sm bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors"
-          >
-            Clear Search
-          </button>
-        </div>
-        <div className="px-4 py-3 bg-card rounded-lg border border-border">
-          <p className="text-foreground text-sm sm:text-base leading-relaxed">
-            {searchAnswer}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex-1 min-w-0">
+      {/* Search Result Card - Shows on top when active */}
+      {searchActive && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3 px-4">
+            <h2 className="text-foreground text-lg sm:text-xl md:text-[22px] font-bold leading-tight tracking-[-0.015em]">
+              Search Answer
+            </h2>
+            <button
+              onClick={onClearSearch}
+              disabled={searchLoading}
+              className="px-3 py-1 text-xs sm:text-sm bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Clear Search
+            </button>
+          </div>
+          <div className="px-4 py-3 bg-card rounded-lg border border-border mb-6 shadow-sm">
+            {searchLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+                <p className="text-foreground text-sm sm:text-base">Loading search results...</p>
+              </div>
+            ) : (
+              <p className="text-foreground text-sm sm:text-base leading-relaxed">
+                {searchAnswer}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Community Feed - Always visible below search results */}
       <h2 className="text-foreground text-lg sm:text-xl md:text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
         Community Feed
       </h2>
@@ -148,6 +158,7 @@ function CommunityDashboard() {
   // Search state
   const [searchActive, setSearchActive] = useState(false);
   const [searchAnswer, setSearchAnswer] = useState<string>("");
+  const [searchLoading, setSearchLoading] = useState(false);
   const [searchGraphData, setSearchGraphData] = useState<{ nodes: Node[]; edges: Edge[] }>({ nodes: [], edges: [] });
   const { callApi: callQueryApi } = useApi<any>(queryKnowledgeGraph);
 
@@ -155,27 +166,33 @@ function CommunityDashboard() {
   const handleSearch = async (query: string) => {
     if (!query.trim() || !communityId) {
       setSearchActive(false);
+      setSearchLoading(false);
       return;
     }
+
+    setSearchLoading(true);
+    setSearchActive(true);
+    setSearchAnswer("");
 
     try {
       const response = await callQueryApi(communityId, query);
       
-      if (response?.data?.success && response.data.data) {
-        setSearchAnswer(response.data.data.answer || "");
+      if (response?.success && response.data) {
+        setSearchAnswer(response.data.answer || "");
         setSearchGraphData({
-          nodes: response.data.data.nodes || [],
-          edges: response.data.data.edges || [],
+          nodes: response.data.nodes || [],
+          edges: response.data.edges || [],
         });
-        setSearchActive(true);
         toast.success("Search completed!");
       } else {
-        toast.error(response?.data?.error || "Search failed");
+        toast.error(response?.error || "Search failed");
         setSearchActive(false);
       }
     } catch (error) {
       toast.error("Error performing search");
       setSearchActive(false);
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -183,6 +200,7 @@ function CommunityDashboard() {
   const handleClearSearch = () => {
     setSearchActive(false);
     setSearchAnswer("");
+    setSearchLoading(false);
     setSearchGraphData({ nodes: [], edges: [] });
   };
 
@@ -821,6 +839,7 @@ function CommunityDashboard() {
                   isMember={isMemberOfCommunity}
                   searchActive={searchActive}
                   searchAnswer={searchAnswer}
+                  searchLoading={searchLoading}
                   onClearSearch={handleClearSearch}
                 />
               </TabsContent>
@@ -842,6 +861,7 @@ function CommunityDashboard() {
               isMember={isMemberOfCommunity}
               searchActive={searchActive}
               searchAnswer={searchAnswer}
+              searchLoading={searchLoading}
               onClearSearch={handleClearSearch}
             />
             <ContributionQueueSection

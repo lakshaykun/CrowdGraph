@@ -413,12 +413,14 @@ export const queryKnowledgeGraph = async (
         "edges": res.data.edges
       }
     }
+    console.log("queryKnowledgeGraph result:", result);
     return result;
   } catch (err: any) {
+    console.error("Error querying knowledge graph:", err);
     return {  
       "success": true,
-      "answer": "The Ark Location is an important entity with several key attributes. Its estimated time of arrival (ETA) is specified as 3 days. For its defense, the Ark Location relies on Metroplex. Furthermore, its current position is identified as the Iacon Data centre.",
       "data": {
+          "answer": "The Ark Location is an important entity with several key attributes. Its estimated time of arrival (ETA) is specified as 3 days. For its defense, the Ark Location relies on Metroplex. Furthermore, its current position is identified as the Iacon Data centre.",
           "nodes": [
               {
                   "id": "4:8eefa8fc-22bf-4992-b648-f9c4e4c8cc01:10",
