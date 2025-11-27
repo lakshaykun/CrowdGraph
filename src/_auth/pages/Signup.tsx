@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { signUpUser } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
 
 function Signup() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
     confirmPassword: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: any) => {
     setFormData({
@@ -17,38 +21,120 @@ function Signup() {
     });
   };
 
+  const validateForm = () => {
+    // Trim whitespace
+    const username = formData.username.trim();
+    const password = formData.password.trim();
+    const confirmPassword = formData.confirmPassword.trim();
+
+    if (!username) {
+      toast.error("Please enter a username");
+      return false;
+    }
+
+    if (username.length < 3) {
+      toast.error("Username must be at least 3 characters long");
+      return false;
+    }
+
+    if (username.length > 20) {
+      toast.error("Username must be less than 20 characters");
+      return false;
+    }
+
+    if (!password) {
+      toast.error("Please enter a password");
+      return false;
+    }
+
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match!");
+    if (!validateForm()) {
       return;
     }
 
-    try {
-      const res = await fetch("/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password,
-        }),
-      });
+    setIsLoading(true);
 
-      if (res.ok) {
-        const data = await res.json();
-        console.log("Signup successful:", data);
-        toast.success("Account created successfully! Redirecting to login...");
-        navigate("/login"); // 🔁 Redirect to login page
+    try {
+      const username = formData.username.trim();
+      const password = formData.password.trim();
+
+      const response = await signUpUser(username, password);
+
+      if (response?.success) {
+        toast.success("Account created successfully! Logging you in...");
+        
+        // Extract user data from signup response
+        const user = response.data;
+        
+        if (user && user.id) {
+          const userData = {
+            id: user.id,
+            username: user.username,
+            createdAt: user.createdAt,
+            reputation: user.reputation || 0,
+          };
+          
+          // Automatically log the user in
+          login(userData);
+          
+          // Reset form
+          setFormData({
+            username: "",
+            password: "",
+            confirmPassword: "",
+          });
+          
+          // Navigate to communities after a short delay
+          setTimeout(() => {
+            navigate("/communities");
+          }, 1000);
+        } else {
+          toast.error("Account created but unable to log in. Please log in manually.");
+          setTimeout(() => {
+            navigate("/login");
+          }, 1500);
+        }
       } else {
-        const err = await res.json();
-        toast.error(`Signup failed: ${err.message || "Unknown error"}`);
+        const errorMessage = response?.error || response?.message || "Signup failed. Please try again.";
+        toast.error(errorMessage);
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("Error connecting to server");
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      
+      let errorMessage = "An error occurred during signup. Please try again.";
+      
+      if (error?.response?.data?.error) {
+        errorMessage = typeof error.response.data.error === 'string' 
+          ? error.response.data.error 
+          : "Signup failed. Please try again.";
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.status === 409) {
+        errorMessage = "Username already exists. Please choose a different username.";
+      } else if (error?.response?.status === 500) {
+        errorMessage = "Server error. Please try again later.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -121,9 +207,12 @@ function Signup() {
           <div className="flex px-4 py-3">
             <button
               type="submit"
-              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 flex-1 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em]"
+              disabled={isLoading}
+              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 flex-1 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              <span className="truncate">Sign Up</span>
+              <span className="truncate">
+                {isLoading ? "Creating Account..." : "Sign Up"}
+              </span>
             </button>
           </div>
 

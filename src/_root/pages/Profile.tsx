@@ -22,10 +22,12 @@ function Profile() {
   const { data: profileUser, loading: userLoading, error: userError, callApi: fetchUser } = useApi<User>(getUserById);
   const { data: communities, loading: communitiesLoading, callApi: fetchCommunities } = useApi(getCommunitiesOfUser);
 
-  // Redirect to login if not authenticated
+  // Only redirect to login if trying to access own profile without auth
   useEffect(() => {
-    if (!currentUser) navigate("/login");
-  }, [currentUser, navigate]);
+    if (isOwnProfile && !currentUser) {
+      navigate("/login");
+    }
+  }, [isOwnProfile, currentUser, navigate]);
 
   // Redirect to /profile if userId matches current user
   useEffect(() => {
@@ -48,7 +50,8 @@ function Profile() {
     }
   }, [profileUserId, fetchCommunities]);
 
-  if (!currentUser) return null;
+  // Only prevent render if accessing own profile without auth
+  if (isOwnProfile && !currentUser) return null;
 
   // Determine which user to display
   const displayUser = userId ? profileUser : currentUser;

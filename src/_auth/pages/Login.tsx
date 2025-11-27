@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { signInUser } from "@/services/api";
 import { toast } from "sonner";
@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   
   const [formData, setFormData] = useState({
@@ -22,54 +23,95 @@ function Login() {
     });
   };
 
+  const validateForm = () => {
+    const username = formData.username.trim();
+    const password = formData.password.trim();
+
+    if (!username) {
+      toast.error("Please enter a username");
+      return false;
+    }
+
+    if (username.length < 3) {
+      toast.error("Username must be at least 3 characters long");
+      return false;
+    }
+
+    if (!password) {
+      toast.error("Please enter a password");
+      return false;
+    }
+
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
 
-    if (!formData.username.trim()) {
-      toast.error("Please enter a username");
-      return;
-    }
-
-    if (!formData.password.trim()) {
-      toast.error("Please enter a password");
+    if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
 
     try {
+      const username = formData.username.trim();
+      const password = formData.password.trim();
+
       // Call the signInUser API to authenticate
-      const authResponse = await signInUser(formData.username, formData.password);
+      const authResponse = await signInUser(username, password);
 
       if (authResponse?.success) {
-        // Authentication successful - now fetch user data
-        try {
-          const user = authResponse.data;
+        // Authentication successful - extract user data
+        const user = authResponse.data;
           
-          if (user) {
-            const userData = {
-              id: user.id,
-              username: user.username,
-              createdAt: user.createdAt,
-              reputation: user.reputation || 0,
-            };
+        if (user && user.id) {
+          const userData = {
+            id: user.id,
+            username: user.username,
+            createdAt: user.createdAt,
+            reputation: user.reputation || 0,
+          };
             
-            login(userData);
-            toast.success(`Welcome back, ${formData.username}!`);
-            navigate("/Communities");
-          } else {
-            toast.error("Unable to fetch user data. Please try again.");
-          }
-        } catch (userError: any) {
-          console.error("Error fetching user data:", userError);
-          toast.error("Unable to fetch user data. Please try again.");
+          login(userData);
+          toast.success(`Welcome back, ${username}!`);
+          
+          // Navigate to the page user was trying to access, or Communities by default
+          const from = (location.state as any)?.from?.pathname || "/Communities";
+          navigate(from, { replace: true });
+        } else {
+          toast.error("Invalid response from server. Please try again.");
         }
       } else {
-        toast.error(authResponse?.error || "Login failed. Please check your credentials and try again.");
+        const errorMessage = authResponse?.error || authResponse?.message || "Login failed. Please check your credentials.";
+        toast.error(errorMessage);
       }
     } catch (error: any) {
       console.error("Login error:", error);
-      toast.error(error?.response?.data?.error || "An error occurred during login. Please try again.");
+      let errorMessage = "An error occurred during login. Please try again.";
+      
+      if (error?.response?.data?.error) {
+        errorMessage = typeof error.response.data.error === 'string' 
+          ? error.response.data.error 
+          : "Login failed. Please try again.";
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.status === 401) {
+        errorMessage = "Invalid username or password. Please try again.";
+      } else if (error?.response?.status === 404) {
+        errorMessage = "User not found. Please check your username or sign up.";
+      } else if (error?.response?.status === 500) {
+        errorMessage = "Server error. Please try again later.";
+      } else if (error?.message && error.message !== 'Network Error') {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
