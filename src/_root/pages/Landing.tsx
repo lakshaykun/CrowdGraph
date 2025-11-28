@@ -63,10 +63,9 @@ function landing() {
             
             <CommunityGrid communities={communitiesToShow.slice(0, 5)} />
             
-            <h2 className="text-foreground text-lg sm:text-xl md:text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Hybrid AI + Human Validation Model</h2>
+            <h2 className="text-foreground text-lg sm:text-xl md:text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Human Validation Model</h2>
             <p className="text-foreground text-sm sm:text-base font-normal leading-normal pb-3 pt-1 px-4">
-              Our platform combines the power of AI with human expertise to ensure the accuracy and reliability of knowledge graphs. AI algorithms suggest potential relationships,
-              while community members validate and refine these suggestions, creating a robust and trustworthy knowledge base.
+              Our platform combines the power of AI with human expertise to ensure the accuracy and reliability of knowledge graphs. 
             </p>
             <h2 className="text-foreground text-lg sm:text-xl md:text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Testimonials &amp; Stats</h2>
             <div className="flex flex-wrap gap-4 p-4">
